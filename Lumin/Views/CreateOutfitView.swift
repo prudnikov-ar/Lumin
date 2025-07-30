@@ -303,6 +303,7 @@ struct AddItemView: View {
     }
 }
 
-//#Preview {
-//    CreateOutfitView(profileViewModel: ProfileViewModel())
-//}
+#Preview {
+    CreateOutfitView(profileViewModel: ProfileViewModel(outfitViewModel: OutfitViewModel()))
+        .environmentObject(OutfitViewModel())
+}
