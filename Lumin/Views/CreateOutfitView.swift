@@ -304,5 +304,5 @@ struct AddItemView: View {
 }
 
 #Preview {
-    CreateOutfitView(profileViewModel: ProfileViewModel())
+    CreateOutfitView(profileViewModel: ProfileViewModel(outfitViewModel: <#OutfitViewModel#>))
 } 

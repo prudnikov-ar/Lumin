@@ -203,11 +203,9 @@ struct FilterTag: View {
                 FashionItem(name: "Джинсы", wbArticle: 456, price: 4599.0, brand: "Levi's"),
                 FashionItem(name: "Кроссовки", wbArticle: 789, price: 8999.0, brand: "Adidas")
             ],
-            itemCount: 3,
             season: .summer,
             gender: .male,
             ageGroup: .young,
-            createdAt: Date()
         ),
         onFavoriteToggle: {}
     )
