@@ -28,11 +28,29 @@ struct OutfitDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     // Галерея фотографий
                     TabView(selection: $currentPhotoIndex) {
-                        ForEach(Array(outfit.photos.enumerated()), id: \.offset) { index, photoName in
-                            Image(photoName)
-                                .resizable()
-                                .scaledToFit()
+                        ForEach(Array(outfit.photos.enumerated()), id: \.offset) { index, photoURL in
+                            if photoURL.hasPrefix("http") {
+                                // Реальное изображение из Supabase Storage
+                                AsyncImage(url: URL(string: photoURL)) { image in
+                                    image
+                                        .resizable()
+                                        .scaledToFit()
+                                } placeholder: {
+                                    Rectangle()
+                                        .fill(Color.gray.opacity(0.3))
+                                        .overlay(
+                                            ProgressView()
+                                                .scaleEffect(1.2)
+                                        )
+                                }
                                 .tag(index)
+                            } else {
+                                // Локальное изображение из Assets
+                                Image(photoURL)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .tag(index)
+                            }
                         }
                     }
                     .tabViewStyle(PageTabViewStyle())
@@ -197,7 +215,7 @@ struct FilterTag: View {
     OutfitDetailView(
         outfit: OutfitCard(
             author: "@test_user",
-            photos: ["test1", "test2"],
+            photos: ["https://bmnzugozbvpeurndgiba.supabase.co/storage/v1/object/public/outfit-images/test_123.jpg"],
             items: [
                 FashionItem(name: "Белая футболка", wbArticle: 123, price: 1299.0, brand: "Nike"),
                 FashionItem(name: "Джинсы", wbArticle: 456, price: 4599.0, brand: "Levi's"),

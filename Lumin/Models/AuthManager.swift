@@ -52,6 +52,7 @@ class AuthManager: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: signUpData)
@@ -66,6 +67,9 @@ class AuthManager: ObservableObject {
         }
         
         if httpResponse.statusCode == 200 {
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("✅ SignUp 200 body: \(responseString)")
+            }
             do {
                 let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
                 
@@ -82,6 +86,10 @@ class AuthManager: ObservableObject {
                 throw AuthError.decodingError
             }
         } else {
+            print("❌ SignUp error: HTTP \(httpResponse.statusCode)")
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("❌ SignUp error body: \(responseString)")
+            }
             do {
                 let errorResponse = try JSONDecoder().decode(ErrorResponse.self, from: data)
                 throw AuthError.signUpFailed(errorResponse.error_description ?? "Ошибка регистрации")
@@ -115,6 +123,7 @@ class AuthManager: ObservableObject {
         request.httpMethod = "POST"
         request.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
         
         do {
             request.httpBody = try JSONSerialization.data(withJSONObject: signInData)
@@ -129,12 +138,23 @@ class AuthManager: ObservableObject {
         }
         
         if httpResponse.statusCode == 200 {
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("✅ SignIn 200 body: \(responseString)")
+            }
             do {
                 let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
+                
+                print("🔑 Sign in successful, saving tokens...")
+                print("📝 Access token: \(authResponse.access_token.prefix(20))...")
+                print("📝 Refresh token: \(authResponse.refresh_token.prefix(20))...")
                 
                 // Сохраняем токен
                 userDefaults.set(authResponse.access_token, forKey: "accessToken")
                 userDefaults.set(authResponse.refresh_token, forKey: "refreshToken")
+                
+                // Проверяем сохранение
+                let savedAccessToken = userDefaults.string(forKey: "accessToken")
+                print("💾 Saved access token: \(savedAccessToken?.prefix(20) ?? "nil")...")
                 
                 // Загружаем данные пользователя
                 try await loadUserData(userId: authResponse.user.id)
@@ -147,6 +167,10 @@ class AuthManager: ObservableObject {
                 throw AuthError.decodingError
             }
         } else {
+            print("❌ SignIn error: HTTP \(httpResponse.statusCode)")
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("❌ SignIn error body: \(responseString)")
+            }
             do {
                 let errorResponse = try JSONDecoder().decode(ErrorResponse.self, from: data)
                 throw AuthError.signInFailed(errorResponse.error_description ?? "Ошибка входа")
@@ -260,9 +284,13 @@ class AuthManager: ObservableObject {
     
     private func loadUserFromDefaults() {
         if let data = userDefaults.data(forKey: "currentUser"),
-           let user = try? JSONDecoder().decode(User.self, from: data) {
+           let user = try? JSONDecoder().decode(User.self, from: data),
+           let _ = userDefaults.string(forKey: "accessToken") {
             currentUser = user
             isAuthenticated = true
+        } else {
+            currentUser = nil
+            isAuthenticated = false
         }
     }
     

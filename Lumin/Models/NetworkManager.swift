@@ -22,21 +22,30 @@ class NetworkManager: ObservableObject {
     private func getAuthHeaders() -> [String: String] {
         var headers = [
             "Authorization": "Bearer \(apiKey)",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "apikey": apiKey
         ]
-        
-        // Добавляем токен пользователя если есть
+        return headers
+    }
+    
+    private func getAuthenticatedHeaders() -> [String: String] {
+        var headers = [
+            "Content-Type": "application/json",
+            "apikey": apiKey
+        ]
         if let accessToken = UserDefaults.standard.string(forKey: "accessToken") {
             headers["Authorization"] = "Bearer \(accessToken)"
+        } else {
+            headers["Authorization"] = "Bearer \(apiKey)"
         }
-        
         return headers
     }
     
     // MARK: - Outfits API
     
-    func fetchOutfits() async throws -> [OutfitCard] {
-        guard let url = URL(string: "\(baseURL)/rest/v1/outfits?select=*&order=created_at.desc") else {
+    func fetchOutfits(page: Int = 0, pageSize: Int = 10) async throws -> [OutfitCard] {
+        let offset = page * pageSize
+        guard let url = URL(string: "\(baseURL)/rest/v1/outfits?select=*&order=created_at.desc&limit=\(pageSize)&offset=\(offset)") else {
             throw NetworkError.invalidURL
         }
         
@@ -46,20 +55,30 @@ class NetworkManager: ObservableObject {
             request.setValue(value, forHTTPHeaderField: key)
         }
         
+        print("🔍 Fetching outfits from: \(url)")
+        print("🔑 Using headers: \(getAuthHeaders())")
+        
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
             throw NetworkError.invalidResponse
         }
         
+        print("📡 Response status: \(httpResponse.statusCode)")
+        
         guard httpResponse.statusCode == 200 else {
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("❌ Error response: \(responseString)")
+            }
             throw NetworkError.httpError(httpResponse.statusCode)
         }
         
         do {
             let outfits = try JSONDecoder().decode([OutfitCard].self, from: data)
+            print("✅ Successfully fetched \(outfits.count) outfits")
             return outfits
         } catch {
+            print("❌ Decoding error: \(error)")
             throw NetworkError.decodingError
         }
     }
@@ -72,7 +91,7 @@ class NetworkManager: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         
-        for (key, value) in getAuthHeaders() {
+        for (key, value) in getAuthenticatedHeaders() {
             request.setValue(value, forHTTPHeaderField: key)
         }
         
@@ -244,7 +263,7 @@ class NetworkManager: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         
-        for (key, value) in getAuthHeaders() {
+        for (key, value) in getAuthenticatedHeaders() {
             request.setValue(value, forHTTPHeaderField: key)
         }
         
@@ -276,7 +295,7 @@ class NetworkManager: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "PATCH"
         
-        for (key, value) in getAuthHeaders() {
+        for (key, value) in getAuthenticatedHeaders() {
             request.setValue(value, forHTTPHeaderField: key)
         }
         
@@ -308,7 +327,7 @@ class NetworkManager: ObservableObject {
         var request = URLRequest(url: url)
         request.httpMethod = "PATCH"
         
-        for (key, value) in getAuthHeaders() {
+        for (key, value) in getAuthenticatedHeaders() {
             request.setValue(value, forHTTPHeaderField: key)
         }
         

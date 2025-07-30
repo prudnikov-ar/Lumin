@@ -91,7 +91,7 @@ struct SearchView: View {
                     .padding(.bottom, 8)
                 }
                 
-                // Сетка нарядов
+                // Сетка нарядов с ленивой загрузкой
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(filteredBySearch) { outfit in
@@ -106,10 +106,58 @@ struct SearchView: View {
                                     selectedOutfit = outfit
                                 }
                             )
+                            .onAppear {
+                                // Ленивая загрузка при приближении к концу списка
+                                Task {
+                                    await outfitViewModel.loadMoreIfNeeded(currentItem: outfit)
+                                }
+                            }
+                        }
+                        
+                        // Индикатор загрузки в конце списка
+                        if outfitViewModel.isLoading && !outfitViewModel.outfits.isEmpty {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                    .scaleEffect(1.2)
+                                Spacer()
+                            }
+                            .padding()
+                            .gridCellColumns(2)
+                        }
+                        
+                        // Сообщение об ошибке
+                        if let errorMessage = outfitViewModel.errorMessage {
+                            VStack(spacing: 12) {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.title)
+                                    .foregroundColor(.orange)
+                                
+                                Text("Ошибка загрузки")
+                                    .font(.headline)
+                                
+                                Text(errorMessage)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                
+                                Button("Повторить") {
+                                    Task {
+                                        await outfitViewModel.loadOutfits(refresh: true)
+                                    }
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                            .padding()
+                            .gridCellColumns(2)
                         }
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 100) // Для TabBar
+                }
+                .refreshable {
+                    // Pull-to-refresh
+                    await outfitViewModel.loadOutfits(refresh: true)
                 }
             }
             .navigationTitle("Lumin")

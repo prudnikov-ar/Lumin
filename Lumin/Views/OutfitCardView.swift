@@ -16,8 +16,24 @@ struct OutfitCardView: View {
         Button(action: onCardTap) {
             VStack(alignment: .leading, spacing: 0) {
                 // Фото наряда
-                if let photoName = outfit.photos.first {
-                    if photoName.hasPrefix("camera_photo_") {
+                if let photoURL = outfit.photos.first {
+                    if photoURL.hasPrefix("http") {
+                        // Реальное изображение из Supabase Storage
+                        AsyncImage(url: URL(string: photoURL)) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(9/13, contentMode: .fit)
+                                .clipped()
+                        } placeholder: {
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.3))
+                                .aspectRatio(9/13, contentMode: .fit)
+                                .overlay(
+                                    ProgressView()
+                                        .scaleEffect(0.8)
+                                )
+                        }
+                    } else if photoURL.hasPrefix("camera_photo_") {
                         // Временное фото из камеры - показываем заглушку
                         Rectangle()
                             .fill(Color.gray.opacity(0.3))
@@ -28,12 +44,14 @@ struct OutfitCardView: View {
                                     .foregroundColor(.gray)
                             )
                     } else {
-                        Image(photoName)
+                        // Локальное изображение из Assets
+                        Image(photoURL)
                             .resizable()
                             .aspectRatio(9/13, contentMode: .fit)
                             .clipped()
                     }
                 }
+                
                 // Кнопка избранного поверх фото
                 HStack {
                     Spacer()
@@ -55,6 +73,7 @@ struct OutfitCardView: View {
                     .padding(.trailing, 6)
                     .padding(.top, -44) // Поднимаем кнопку выше
                 }
+                
                 // Ник автора
                 Text(outfit.author)
                     .font(.subheadline)
@@ -75,7 +94,7 @@ struct OutfitCardView: View {
     OutfitCardView(
         outfit: OutfitCard(
             author: "@test_user",
-            photos: ["test1", "test2"],
+            photos: ["https://bmnzugozbvpeurndgiba.supabase.co/storage/v1/object/public/outfit-images/test_123.jpg"],
             items: [
                 FashionItem(name: "Белая футболка", wbArticle: 123, price: 1299.0, brand: "Nike"),
                 FashionItem(name: "Джинсы", wbArticle: 456, price: 4599.0, brand: "Levi's"),

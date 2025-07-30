@@ -19,98 +19,99 @@ struct StorageTestView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 30) {
-                // Заголовок
-                VStack(spacing: 10) {
-                    Image(systemName: "photo.badge.plus")
-                        .font(.system(size: 60))
-                        .foregroundColor(.blue)
-                    
-                    Text("Тест загрузки изображений")
-                        .font(.title)
-                        .fontWeight(.bold)
-                    
-                    Text("Проверка Supabase Storage")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
+            VStack(spacing: 20) {
+                Text("Тест загрузки изображений")
+                    .font(.title2)
+                    .fontWeight(.semibold)
                 
-                // Кнопка выбора изображения
-                PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                    HStack {
-                        Image(systemName: "photo")
-                        Text("Выбрать изображение")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
+                Button("Выйти") {
+                    AuthManager.shared.signOut()
                 }
-                .disabled(isUploading)
-                .padding(.horizontal)
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
                 
-                // Прогресс загрузки
-                if isUploading {
-                    VStack(spacing: 10) {
-                        ProgressView()
-                            .scaleEffect(1.2)
-                        
-                        Text("Загрузка изображения...")
+                // Тест авторизации
+                VStack(spacing: 12) {
+                    Text("Проверка авторизации:")
+                        .font(.headline)
+                    
+                    if let accessToken = UserDefaults.standard.string(forKey: "accessToken") {
+                        Text("✅ Токен найден: \(accessToken.prefix(20))...")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(.green)
+                    } else {
+                        Text("❌ Токен не найден")
+                            .font(.caption)
+                            .foregroundColor(.red)
                     }
+                    
+                    Button("Проверить токены") {
+                        checkTokens()
+                    }
+                    .buttonStyle(.bordered)
                 }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
                 
-                // Результат загрузки
-                if let imageURL = uploadedImageURL {
-                    VStack(spacing: 15) {
-                        Text("Изображение успешно загружено!")
-                            .font(.headline)
+                // Тест загрузки изображения
+                VStack(spacing: 12) {
+                    Text("Загрузка изображения:")
+                        .font(.headline)
+                    
+                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        HStack {
+                            Image(systemName: "photo")
+                            Text("Выбрать изображение")
+                        }
+                        .padding()
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                    }
+                    
+                    if isUploading {
+                        ProgressView("Загрузка...")
+                    }
+                    
+                    if let uploadedImageURL = uploadedImageURL {
+                        Text("✅ Загружено успешно!")
                             .foregroundColor(.green)
                         
-                        AsyncImage(url: URL(string: imageURL)) { image in
+                        AsyncImage(url: URL(string: uploadedImageURL)) { image in
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(height: 200)
-                                .cornerRadius(10)
                         } placeholder: {
                             ProgressView()
-                                .frame(height: 200)
                         }
-                        
-                        Text("URL: \(imageURL)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
                     }
-                }
-                
-                // Информация о настройках
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Настройки Supabase:")
-                        .font(.headline)
-                    
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text("• Bucket: outfit-images")
-                        Text("• Публичный доступ: Да")
-                        Text("• Лимит размера: 5MB")
-                        Text("• Разрешенные типы: image/*")
-                    }
-                    .font(.caption)
-                    .foregroundColor(.secondary)
                 }
                 .padding()
                 .background(Color(.systemGray6))
-                .cornerRadius(10)
-                .padding(.horizontal)
+                .cornerRadius(12)
+                
+                // Информация о настройках
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Требуемые настройки Supabase:")
+                        .font(.headline)
+                    
+                    Text("• Storage bucket: 'outfit-images'")
+                    Text("• Public access: включен")
+                    Text("• File size limit: 5MB")
+                    Text("• Allowed MIME types: image/*")
+                    Text("• RLS policies настроены")
+                }
+                .font(.caption)
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
                 
                 Spacer()
             }
             .padding()
-            .navigationTitle("Тест Storage")
+            .navigationTitle("Тест загрузки")
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: selectedPhoto) { newItem in
                 Task {
@@ -153,6 +154,15 @@ struct StorageTestView: View {
                 showAlert = true
             }
         }
+    }
+    
+    private func checkTokens() {
+        let accessToken = UserDefaults.standard.string(forKey: "accessToken")
+        let refreshToken = UserDefaults.standard.string(forKey: "refreshToken")
+        
+        print("🔍 Checking tokens...")
+        print("📝 Access token: \(accessToken?.prefix(20) ?? "nil")...")
+        print("📝 Refresh token: \(refreshToken?.prefix(20) ?? "nil")...")
     }
 }
 
