@@ -6,14 +6,19 @@
 //
 
 import Foundation
+import SwiftUI
 
 final class ProfileViewModel: ObservableObject {
     @Published var currentUser: User?
     @Published var isCreatingNewOutfit = false
     @Published var showingSocialLinks = false
+    @Published var isUploadingProfileImage = false
+    @Published var showAlert = false
+    @Published var alertMessage = ""
     
     private let authManager = AuthManager.shared
     private let outfitViewModel: OutfitViewModel
+    private let networkManager = NetworkManager.shared
     
     init(outfitViewModel: OutfitViewModel) {
         self.outfitViewModel = outfitViewModel
@@ -39,9 +44,54 @@ final class ProfileViewModel: ObservableObject {
     
     // Удалить наряд
     func deleteOutfit(_ outfit: OutfitCard) {
-        // TODO: Реализовать удаление через API
-        if let index = outfitViewModel.outfits.firstIndex(where: { $0.id == outfit.id }) {
-            outfitViewModel.outfits.remove(at: index)
+        Task {
+            do {
+                // TODO: Реализовать удаление через API
+                if let index = outfitViewModel.outfits.firstIndex(where: { $0.id == outfit.id }) {
+                    await MainActor.run {
+                        outfitViewModel.outfits.remove(at: index)
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    alertMessage = error.localizedDescription
+                    showAlert = true
+                }
+            }
+        }
+    }
+    
+    // Загрузить профильное изображение
+    func uploadProfileImage(_ imageData: Data) {
+        Task {
+            await MainActor.run {
+                isUploadingProfileImage = true
+            }
+            
+            do {
+                let fileName = "profile_\(currentUser?.id.uuidString ?? UUID().uuidString).jpg"
+                let imageURL = try await networkManager.uploadImage(imageData, fileName: fileName)
+                
+                // Обновляем пользователя с новым URL изображения
+                if var user = currentUser {
+                    user.profileImage = imageURL
+                    currentUser = user
+                    
+                    // Сохраняем в базе данных
+                    try await networkManager.updateUser(user)
+                }
+                
+                await MainActor.run {
+                    isUploadingProfileImage = false
+                }
+                
+            } catch {
+                await MainActor.run {
+                    isUploadingProfileImage = false
+                    alertMessage = error.localizedDescription
+                    showAlert = true
+                }
+            }
         }
     }
     
@@ -60,5 +110,10 @@ final class ProfileViewModel: ObservableObject {
     // Обновить ник пользователя
     func updateUsername(_ username: String) {
         authManager.updateProfile(username: username)
+    }
+    
+    // Выйти из аккаунта
+    func signOut() {
+        authManager.signOut()
     }
 } 

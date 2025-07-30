@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PhotosUI
 
 struct ProfileView: View {
     @ObservedObject var profileViewModel: ProfileViewModel
@@ -13,6 +14,8 @@ struct ProfileView: View {
     @State private var selectedOutfit: OutfitCard?
     @State private var isEditingNick = false
     @State private var newNick = ""
+    @State private var showingImagePicker = false
+    @State private var selectedPhoto: PhotosPickerItem?
     
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -25,21 +28,52 @@ struct ProfileView: View {
                 VStack(spacing: 24) {
                     // Новый компактный профиль
                     HStack(alignment: .center, spacing: 16) {
-                        // Аватар
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
+                        // Аватар с возможностью загрузки
+                        Button(action: { showingImagePicker = true }) {
+                            if let profileImage = profileViewModel.currentUser?.profileImage,
+                               let url = URL(string: profileImage) {
+                                AsyncImage(url: url) { image in
+                                    image
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                } placeholder: {
+                                    ProgressView()
+                                }
+                                .frame(width: 60, height: 60)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.blue, lineWidth: 2)
                                 )
-                            )
-                            .frame(width: 60, height: 60)
-                            .overlay(
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundColor(.white)
-                            )
+                            } else {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [Color.blue.opacity(0.3), Color.purple.opacity(0.3)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 60, height: 60)
+                                    .overlay(
+                                        VStack(spacing: 4) {
+                                            Image(systemName: "person.fill")
+                                                .font(.system(size: 24))
+                                                .foregroundColor(.white)
+                                            
+                                            if profileViewModel.isUploadingProfileImage {
+                                                ProgressView()
+                                                    .scaleEffect(0.5)
+                                            } else {
+                                                Image(systemName: "camera.fill")
+                                                    .font(.system(size: 12))
+                                                    .foregroundColor(.white)
+                                            }
+                                        }
+                                    )
+                            }
+                        }
+                        .disabled(profileViewModel.isUploadingProfileImage)
                         
                         VStack(alignment: .leading, spacing: 8) {
                             // Ник
@@ -76,7 +110,7 @@ struct ProfileView: View {
                                     }
                                 }
                             } else {
-                                                                    Text(profileViewModel.currentUser?.username ?? "@user")
+                                Text(profileViewModel.currentUser?.username ?? "@user")
                                     .font(.title2)
                                     .fontWeight(.bold)
                                     .foregroundColor(.primary)
@@ -85,12 +119,23 @@ struct ProfileView: View {
                                         isEditingNick = true
                                     }
                             }
+                            
+                            // Email
+                            if let email = profileViewModel.currentUser?.email {
+                                Text(email)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
                             // Социальные сети
                             if let user = profileViewModel.currentUser, !user.socialLinks.isEmpty {
                                 HStack(spacing: 14) {
                                     ForEach(user.socialLinks) { link in
                                         Button(action: {
                                             // Открыть социальную сеть
+                                            if let url = URL(string: link.url) {
+                                                UIApplication.shared.open(url)
+                                            }
                                         }) {
                                             Image(systemName: link.platform.icon)
                                                 .font(.system(size: 16))
@@ -193,6 +238,21 @@ struct ProfileView: View {
             }
             .navigationTitle("Профиль")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Button("Добавить соц. сеть") {
+                            // TODO: Показать модальное окно для добавления соц. сети
+                        }
+                        
+                        Button("Выйти", role: .destructive) {
+                            profileViewModel.signOut()
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
             .sheet(isPresented: $showingCreateOutfit) {
                 CreateOutfitView(profileViewModel: profileViewModel)
             }
@@ -203,6 +263,19 @@ struct ProfileView: View {
                         // В профиле можно убрать из избранного
                     }
                 )
+            }
+            .photosPicker(isPresented: $showingImagePicker, selection: $selectedPhoto, matching: .images)
+            .onChange(of: selectedPhoto) { newItem in
+                Task {
+                    if let data = try? await newItem?.loadTransferable(type: Data.self) {
+                        profileViewModel.uploadProfileImage(data)
+                    }
+                }
+            }
+            .alert("Ошибка", isPresented: $profileViewModel.showAlert) {
+                Button("OK") { }
+            } message: {
+                Text(profileViewModel.alertMessage)
             }
         }
     }

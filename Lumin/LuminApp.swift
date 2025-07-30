@@ -15,7 +15,7 @@ struct LuminApp: App {
     var body: some Scene {
         WindowGroup {
             if authManager.isAuthenticated {
-                ContentView()
+                StorageTestView()
                     .environmentObject(outfitViewModel)
             } else {
                 AuthView()

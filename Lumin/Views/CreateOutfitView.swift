@@ -22,72 +22,104 @@ struct CreateOutfitView: View {
     @State private var showingCamera = false
     @State private var showingAddItem = false
     @State private var cameraImage: UIImage?
+    @State private var isUploading = false
+    @State private var uploadProgress: Double = 0.0
+    @State private var showAlert = false
+    @State private var alertMessage = ""
+    
+    private let networkManager = NetworkManager.shared
     
     var body: some View {
         NavigationView {
             Form {
                 Section("Фотографии наряда") {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            // Кнопка добавления фото
-                            Button(action: { showingImagePicker = true }) {
-                                VStack(spacing: 8) {
-                                    Image(systemName: "photo.badge.plus")
-                                        .font(.title2)
-                                        .foregroundColor(.blue)
-                                    
-                                    Text("Добавить фото")
-                                        .font(.caption)
-                                        .foregroundColor(.blue)
-                                }
-                                .frame(width: 100, height: 100)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
-                            }
-                            
-                            // Кнопка камеры
-                            Button(action: { showingCamera = true }) {
-                                VStack(spacing: 8) {
-                                    Image(systemName: "camera")
-                                        .font(.title2)
-                                        .foregroundColor(.green)
-                                    
-                                    Text("Сделать фото")
-                                        .font(.caption)
-                                        .foregroundColor(.green)
-                                }
-                                .frame(width: 100, height: 100)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
-                            }
-                            
-                            // Загруженные фотографии
-                            ForEach(photoData.indices, id: \.self) { index in
-                                if let uiImage = UIImage(data: photoData[index]) {
-                                    Image(uiImage: uiImage)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
+                    VStack(spacing: 12) {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 12) {
+                                // Кнопка добавления фото
+                                if photoData.count < 2 {
+                                    Button(action: { showingImagePicker = true }) {
+                                        VStack(spacing: 8) {
+                                            Image(systemName: "photo.badge.plus")
+                                                .font(.title2)
+                                                .foregroundColor(.blue)
+                                            
+                                            Text("Добавить фото")
+                                                .font(.caption)
+                                                .foregroundColor(.blue)
+                                        }
                                         .frame(width: 100, height: 100)
-                                        .clipped()
+                                        .background(Color(.systemGray6))
                                         .cornerRadius(8)
-                                        .overlay(
-                                            Button(action: {
-                                                photoData.remove(at: index)
-                                            }) {
-                                                Image(systemName: "xmark.circle.fill")
-                                                    .foregroundColor(.red)
-                                                    .background(Color.white)
-                                                    .clipShape(Circle())
+                                    }
+                                    .disabled(isUploading)
+                                    
+                                    // Кнопка камеры
+                                    Button(action: { showingCamera = true }) {
+                                        VStack(spacing: 8) {
+                                            Image(systemName: "camera")
+                                                .font(.title2)
+                                                .foregroundColor(.green)
+                                            
+                                            Text("Сделать фото")
+                                                .font(.caption)
+                                                .foregroundColor(.green)
+                                        }
+                                        .frame(width: 100, height: 100)
+                                        .background(Color(.systemGray6))
+                                        .cornerRadius(8)
+                                    }
+                                    .disabled(isUploading)
+                                }
+                                
+                                // Загруженные фотографии
+                                ForEach(photoData.indices, id: \.self) { index in
+                                    if let uiImage = UIImage(data: photoData[index]) {
+                                        ZStack {
+                                            Image(uiImage: uiImage)
+                                                .resizable()
+                                                .aspectRatio(contentMode: .fill)
+                                                .frame(width: 100, height: 100)
+                                                .clipped()
+                                                .cornerRadius(8)
+                                            
+                                            // Кнопка удаления
+                                            VStack {
+                                                HStack {
+                                                    Spacer()
+                                                    Button(action: {
+                                                        photoData.remove(at: index)
+                                                    }) {
+                                                        Image(systemName: "xmark.circle.fill")
+                                                            .foregroundColor(.red)
+                                                            .background(Color.white)
+                                                            .clipShape(Circle())
+                                                    }
+                                                    .padding(4)
+                                                }
+                                                Spacer()
                                             }
-                                            .padding(4),
-                                            alignment: .topTrailing
-                                        )
+                                        }
+                                    }
                                 }
                             }
+                            .padding(.horizontal, 16)
                         }
-                        .padding(.horizontal, 16)
+                        .frame(height: 120)
+                        
+                        // Прогресс загрузки
+                        if isUploading {
+                            VStack(spacing: 8) {
+                                ProgressView(value: uploadProgress)
+                                    .progressViewStyle(LinearProgressViewStyle())
+                                
+                                Text("Загрузка фотографий... \(Int(uploadProgress * 100))%")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal)
+                        }
                     }
-                    .frame(height: 120)
                 }
                 
                 Section("Основная информация") {
@@ -151,46 +183,39 @@ struct CreateOutfitView: View {
                     Button("Отмена") {
                         dismiss()
                     }
+                    .disabled(isUploading)
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Создать") {
-                        // Создаем временные имена для фото
-                        let photoNames = photoData.isEmpty ? ["placeholder"] : photoData.enumerated().map { index, _ in
-                            "camera_photo_\(Date().timeIntervalSince1970)_\(index)"
+                        Task {
+                            await createOutfit()
                         }
-                        
-                        let newOutfit = OutfitCard(
-                            author: profileViewModel.currentUser?.username ?? "@user",
-                            photos: photoNames,
-                            items: items,
-                            season: selectedSeason,
-                            gender: selectedGender,
-                            ageGroup: selectedAgeGroup
-                        )
-                        profileViewModel.addNewOutfit(newOutfit)
-                        dismiss()
                     }
-                    .disabled(items.isEmpty)
+                    .disabled(items.isEmpty || photoData.isEmpty || isUploading)
                 }
             }
             .photosPicker(isPresented: $showingImagePicker, selection: $selectedPhotos, matching: .images)
             .onChange(of: selectedPhotos) { newItems in
                 Task {
-                    photoData.removeAll()
-                    
                     for item in newItems {
-                        if let data = try? await item.loadTransferable(type: Data.self) {
-                            photoData.append(data)
+                        if photoData.count < 2,
+                           let data = try? await item.loadTransferable(type: Data.self) {
+                            await MainActor.run {
+                                photoData.append(data)
+                            }
                         }
                     }
+                    selectedPhotos.removeAll()
                 }
             }
             .sheet(isPresented: $showingCamera) {
                 ImagePicker(selectedImage: $cameraImage, sourceType: .camera)
             }
             .onChange(of: cameraImage) { newImage in
-                if let image = newImage, let data = image.jpegData(compressionQuality: 0.8) {
+                if let image = newImage,
+                   photoData.count < 2,
+                   let data = image.jpegData(compressionQuality: 0.8) {
                     photoData.append(data)
                     cameraImage = nil
                 }
@@ -200,11 +225,67 @@ struct CreateOutfitView: View {
                     items.append(newItem)
                 }
             }
+            .alert("Ошибка", isPresented: $showAlert) {
+                Button("OK") { }
+            } message: {
+                Text(alertMessage)
+            }
         }
     }
     
     private func deleteItems(offsets: IndexSet) {
         items.remove(atOffsets: offsets)
+    }
+    
+    private func createOutfit() async {
+        guard !photoData.isEmpty else {
+            await MainActor.run {
+                alertMessage = "Добавьте хотя бы одну фотографию"
+                showAlert = true
+            }
+            return
+        }
+        
+        await MainActor.run {
+            isUploading = true
+            uploadProgress = 0.0
+        }
+        
+        do {
+            // Загружаем фотографии
+            let uploadedURLs = try await networkManager.uploadMultipleImages(photoData)
+            
+            await MainActor.run {
+                uploadProgress = 1.0
+            }
+            
+            // Создаем наряд
+            let newOutfit = OutfitCard(
+                author: profileViewModel.currentUser?.username ?? "@user",
+                photos: uploadedURLs,
+                items: items,
+                season: selectedSeason,
+                gender: selectedGender,
+                ageGroup: selectedAgeGroup
+            )
+            
+            // Сохраняем в базе данных
+            try await networkManager.createOutfit(newOutfit)
+            
+            // Добавляем в локальный список
+            await MainActor.run {
+                profileViewModel.addNewOutfit(newOutfit)
+                isUploading = false
+                dismiss()
+            }
+            
+        } catch {
+            await MainActor.run {
+                isUploading = false
+                alertMessage = error.localizedDescription
+                showAlert = true
+            }
+        }
     }
 }
 

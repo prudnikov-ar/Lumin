@@ -63,9 +63,7 @@ struct SupabaseConfig {
  CREATE POLICY "Allow authenticated insert" ON outfits
    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
  
- -- Разрешить обновление своих нарядов
- CREATE POLICY "Allow update own outfits" ON outfits
-   FOR UPDATE USING (auth.uid()::text = author);
+ -- Разрешить обновление своих нарядов не нужно так как редактировать свои посты никак нельзя а только удалять (это политика моего приложения)
  
  -- Разрешить удаление своих нарядов
  CREATE POLICY "Allow delete own outfits" ON outfits

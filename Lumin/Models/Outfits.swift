@@ -54,7 +54,7 @@ struct User: Identifiable, Codable {
     let id: UUID
     var username: String
     let email: String
-    let profileImage: String?
+    var profileImage: String?
     var socialLinks: [SocialLink]
     var outfits: [OutfitCard]      // Созданные пользователем наряды
     
