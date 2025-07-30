@@ -98,7 +98,9 @@ struct SearchView: View {
                             OutfitCardView(
                                 outfit: outfit,
                                 onFavoriteToggle: {
-                                    await outfitViewModel.toggleFavorite(for: outfit)
+                                    Task {
+                                        await outfitViewModel.toggleFavorite(for: outfit)
+                                    }
                                 },
                                 onCardTap: {
                                     selectedOutfit = outfit

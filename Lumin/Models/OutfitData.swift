@@ -14,8 +14,9 @@ final class OutfitViewModel: ObservableObject {
     private let networkManager = NetworkManager.shared
     
     init() {
-        loadOutfits()
-    }
+        Task { @MainActor in
+            await self.loadOutfits()
+        }
     
     // MARK: - Network Operations
     
@@ -65,213 +66,215 @@ final class OutfitViewModel: ObservableObject {
     
     // MARK: - Local Data (Fallback)
     
-    private func loadLocalOutfits() {
-        outfits = [
-        OutfitCard(
-            author: "@awentodor_Italy",
-            photos: ["Summer_outfit_1", "Summer_outfit_2"],
-            items: [
-                FashionItem(name: "Пиджак", wbArticle: 8234339, price: 9499.0, brand: "Levi's"),
-                FashionItem(name: "Рубашка", wbArticle: 2234532, price: 2599.0, brand: "Nike"),
-                FashionItem(name: "Галстук", wbArticle: 2234532, price: 899.0, brand: "Nike"),
-                FashionItem(name: "Брюки", wbArticle: 8234339, price: 6599.0, brand: "Levi's"),
-                FashionItem(name: "Ремень", wbArticle: 8234339, price: 1399.0, brand: "Levi's"),
-                FashionItem(name: "Сумка", wbArticle: 8234339, price: 11599.0, brand: "Levi's"),
-                FashionItem(name: "Туфли", wbArticle: 7334531, price: 5999.0, brand: "Adidas")
-            ],
-            season: .spring,
-            gender: .female,
-            ageGroup: .adult
-        ),
-        OutfitCard(
-            author: "@nesty__",
-            photos: ["sw_1"],
-            items: [
-                FashionItem(name: "Куртка", wbArticle: 2234532, price: 7499.0, brand: "Zara"),
-                FashionItem(name: "Рубашка", wbArticle: 8234339, price: 2599.0, brand: "H&M"),
-                FashionItem(name: "Юбка", wbArticle: 7334531, price: 1899.0, brand: "Massimo Dutti"),
-                FashionItem(name: "Сумка", wbArticle: 8234339, price: 5299.0, brand: "Levi's"),
-                FashionItem(name: "Очки", wbArticle: 8234339, price: 2399.0, brand: "Levi's")
-            ],
-            season: .autumn,
-            gender: .female,
-            ageGroup: .young
-        ),
-        OutfitCard(
-            author: "@andrew",
-            photos: ["male_car"],
-            items: [
-                FashionItem(name: "Очки", wbArticle: 8234339, price: 1599.0, brand: "Levi's"),
-                FashionItem(name: "Рубашка", wbArticle: 2234532, price: 2999.0, brand: "Uniqlo"),
-                FashionItem(name: "Брюки", wbArticle: 8234339, price: 6599.0, brand: "COS"),
-                FashionItem(name: "Ремень", wbArticle: 8234339, price: 1599.0, brand: "Levi's"),
-                FashionItem(name: "Подкрадули", wbArticle: 7334531, price: 5999.0, brand: "Clarks"),
-                FashionItem(name: "Часы", wbArticle: 8234339, price: 6599.0, brand: "Levi's"),
-                FashionItem(name: "Сумка", wbArticle: 8234339, price: 7899.0, brand: "Levi's")
-            ],
-            
-            season: .summer,
-            gender: .male,
-            ageGroup: .adult,
-        ),
-        OutfitCard(
-            author: "@sofaa",
-            photos: ["sea_female"],
-            items: [
-                FashionItem(name: "Кофта", wbArticle: 2234532, price: 12999.0, brand: "The North Face"),
-                FashionItem(name: "Джинсы", wbArticle: 8234339, price: 15799.0, brand: "Levi's"),
-                FashionItem(name: "Босоножки", wbArticle: 7334531, price: 7999.0, brand: "Dr. Martens")
-            ],
-            
-            season: .spring,
-            gender: .female,
-            ageGroup: .young,
-        ),
-        OutfitCard(
-            author: "@nikita_kuznetsov",
-            photos: ["cantry_man"],
-            items: [
-                FashionItem(name: "Шляпа", wbArticle: 2234532, price: 2999.0, brand: "The North Face"),
-                FashionItem(name: "Рубашка", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
-                FashionItem(name: "Джинсы", wbArticle: 7334531, price: 4999.0, brand: "Dr. Martens"),
-                FashionItem(name: "Ботинки", wbArticle: 8234339, price: 8799.0, brand: "Levi's")
-            ],
-            
-            season: .spring,
-            gender: .male,
-            ageGroup: .adult,
-        ),
-        OutfitCard(
-            author: "@awentodor_Italy",
-            photos: ["cantry_women"],
-            items: [
-                FashionItem(name: "Плед", wbArticle: 2234532, price: 2999.0, brand: "The North Face"),
-                FashionItem(name: "Платье", wbArticle: 8234339, price: 8799.0, brand: "Levi's"),
-                FashionItem(name: "Браслет", wbArticle: 7334531, price: 2399.0, brand: "Dr. Martens"),
-                FashionItem(name: "Ботинки", wbArticle: 8234339, price: 11799.0, brand: "Levi's")
-            ],
-            
-            season: .autumn,
-            gender: .female,
-            ageGroup: .adult,
-        ),
-        OutfitCard(
-            author: "@manilov",
-            photos: ["chicago"],
-            items: [
-                FashionItem(name: "Шляпа", wbArticle: 2234532, price: 2999.0, brand: "The North Face"),
-                FashionItem(name: "Очки", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
-                FashionItem(name: "Рубашка", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
-                FashionItem(name: "Галстук", wbArticle: 7334531, price: 2399.0, brand: "Dr. Martens"),
-                FashionItem(name: "Жилет", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
-                FashionItem(name: "Часы", wbArticle: 7334531, price: 2399.0, brand: "Shelby Ltd."),
-                FashionItem(name: "Пиджак", wbArticle: 7334531, price: 8399.0, brand: "Dr. Martens"),
-                FashionItem(name: "Брюки", wbArticle: 8234339, price: 7799.0, brand: "Levi's"),
-                FashionItem(name: "Туфли", wbArticle: 8234339, price: 9799.0, brand: "Levi's"),
-                FashionItem(name: "Носки", wbArticle: 8234339, price: 1199.0, brand: "Levi's"),
-                FashionItem(name: "Синий пиджак", wbArticle: 8234339, price: 10799.0, brand: "Levi's"),
-            ],
-            
-            season: .autumn,
-            gender: .male,
-            ageGroup: .adult,
-        ),
-        OutfitCard(
-            author: "@sofaa",
-            photos: ["city_style"],
-            items: [
-                FashionItem(name: "Топ", wbArticle: 2234532, price: 3999.0, brand: "Levi's"),
-                FashionItem(name: "Жилет", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
-                FashionItem(name: "Юбка", wbArticle: 8234339, price: 5799.0, brand: "Levi's"),
-                FashionItem(name: "Пальто", wbArticle: 7334531, price: 8399.0, brand: "Dr. Martens"),
-                FashionItem(name: "Туфли", wbArticle: 8234339, price: 3799.0, brand: "Levi's")
-            ],
-            
-            season: .autumn,
-            gender: .female,
-            ageGroup: .young,
-        ),
-        OutfitCard(
-            author: "@sofaa",
-            photos: ["style_white"],
-            items: [
-                FashionItem(name: "Платье", wbArticle: 2234532, price: 7999.0, brand: "Levi's"),
-                FashionItem(name: "Сумка", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
-                FashionItem(name: "Очки", wbArticle: 8234339, price: 4799.0, brand: "Levi's"),
-                FashionItem(name: "Туфли", wbArticle: 7334531, price: 7399.0, brand: "Dr. Martens")
-            ],
-            
-            season: .autumn,
-            gender: .female,
-            ageGroup: .young,
-        ),
-        OutfitCard(
-            author: "@lu_kang",
-            photos: ["kndr"],
-            items: [
-                FashionItem(name: "Рубашка", wbArticle: 2234532, price: 1999.0, brand: "Levi's"),
-                FashionItem(name: "Джинсовка", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
-                FashionItem(name: "Брюки", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
-                FashionItem(name: "Носки", wbArticle: 8234339, price: 199.0, brand: "Levi's"),
-                FashionItem(name: "Кеды", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
-                FashionItem(name: "Плащ", wbArticle: 8234339, price: 4299.0, brand: "Levi's")
-            ],
-            
-            season: .spring,
-            gender: .male,
-            ageGroup: .young,
-        ),
-        OutfitCard(
-            author: "@lu_kang",
-            photos: ["young80"],
-            items: [
-                FashionItem(name: "Кофта", wbArticle: 2234532, price: 1999.0, brand: "Levi's"),
-                FashionItem(name: "Брюки", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
-                FashionItem(name: "Ремень", wbArticle: 8234339, price: 799.0, brand: "Levi's"),
-                FashionItem(name: "Носки", wbArticle: 8234339, price: 299.0, brand: "Levi's"),
-                FashionItem(name: "Кросовки", wbArticle: 8234339, price: 4799.0, brand: "Levi's"),
-                FashionItem(name: "Чемодан", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
-                FashionItem(name: "Очки", wbArticle: 8234339, price: 1699.0, brand: "Levi's"),
-                FashionItem(name: "Подвеска", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
-                FashionItem(name: "Зонт", wbArticle: 8234339, price: 4299.0, brand: "Levi's")
-            ],
-            
-            season: .autumn,
-            gender: .male,
-            ageGroup: .young,
-        ),
-        OutfitCard(
-            author: "@zelda",
-            photos: ["bocho"],
-            items: [
-                FashionItem(name: "Платье", wbArticle: 2234532, price: 4999.0, brand: "Levi's"),
-                FashionItem(name: "Ремень", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
-                FashionItem(name: "Накидка", wbArticle: 8234339, price: 5799.0, brand: "Levi's"),
-                FashionItem(name: "Туфли", wbArticle: 8234339, price: 6299.0, brand: "Levi's")
-            ],
-            
-            season: .spring,
-            gender: .female,
-            ageGroup: .young,
-        ),
-        OutfitCard(
-            author: "@zelda",
-            photos: ["busines_women"],
-            items: [
-                FashionItem(name: "Очки", wbArticle: 2234532, price: 1999.0, brand: "Levi's"),
-                FashionItem(name: "Блузка", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
-                FashionItem(name: "Пиджак", wbArticle: 8234339, price: 4799.0, brand: "Levi's"),
-                FashionItem(name: "Брюки", wbArticle: 8234339, price: 3299.0, brand: "Levi's"),
-                FashionItem(name: "Сумка", wbArticle: 8234339, price: 4799.0, brand: "Levi's"),
-                FashionItem(name: "Туфли", wbArticle: 8234339, price: 5799.0, brand: "Levi's"),
-                FashionItem(name: "Пальто", wbArticle: 8234339, price: 6799.0, brand: "Levi's"),
-            ],
-            
-            season: .autumn,
-            gender: .female,
-            ageGroup: .adult,
-        ),
-    ]
+        private func loadLocalOutfits() {
+            outfits = [
+                OutfitCard(
+                    author: "@awentodor_Italy",
+                    photos: ["Summer_outfit_1", "Summer_outfit_2"],
+                    items: [
+                        FashionItem(name: "Пиджак", wbArticle: 8234339, price: 9499.0, brand: "Levi's"),
+                        FashionItem(name: "Рубашка", wbArticle: 2234532, price: 2599.0, brand: "Nike"),
+                        FashionItem(name: "Галстук", wbArticle: 2234532, price: 899.0, brand: "Nike"),
+                        FashionItem(name: "Брюки", wbArticle: 8234339, price: 6599.0, brand: "Levi's"),
+                        FashionItem(name: "Ремень", wbArticle: 8234339, price: 1399.0, brand: "Levi's"),
+                        FashionItem(name: "Сумка", wbArticle: 8234339, price: 11599.0, brand: "Levi's"),
+                        FashionItem(name: "Туфли", wbArticle: 7334531, price: 5999.0, brand: "Adidas")
+                    ],
+                    season: .spring,
+                    gender: .female,
+                    ageGroup: .adult
+                ),
+                OutfitCard(
+                    author: "@nesty__",
+                    photos: ["sw_1"],
+                    items: [
+                        FashionItem(name: "Куртка", wbArticle: 2234532, price: 7499.0, brand: "Zara"),
+                        FashionItem(name: "Рубашка", wbArticle: 8234339, price: 2599.0, brand: "H&M"),
+                        FashionItem(name: "Юбка", wbArticle: 7334531, price: 1899.0, brand: "Massimo Dutti"),
+                        FashionItem(name: "Сумка", wbArticle: 8234339, price: 5299.0, brand: "Levi's"),
+                        FashionItem(name: "Очки", wbArticle: 8234339, price: 2399.0, brand: "Levi's")
+                    ],
+                    season: .autumn,
+                    gender: .female,
+                    ageGroup: .young
+                ),
+                OutfitCard(
+                    author: "@andrew",
+                    photos: ["male_car"],
+                    items: [
+                        FashionItem(name: "Очки", wbArticle: 8234339, price: 1599.0, brand: "Levi's"),
+                        FashionItem(name: "Рубашка", wbArticle: 2234532, price: 2999.0, brand: "Uniqlo"),
+                        FashionItem(name: "Брюки", wbArticle: 8234339, price: 6599.0, brand: "COS"),
+                        FashionItem(name: "Ремень", wbArticle: 8234339, price: 1599.0, brand: "Levi's"),
+                        FashionItem(name: "Подкрадули", wbArticle: 7334531, price: 5999.0, brand: "Clarks"),
+                        FashionItem(name: "Часы", wbArticle: 8234339, price: 6599.0, brand: "Levi's"),
+                        FashionItem(name: "Сумка", wbArticle: 8234339, price: 7899.0, brand: "Levi's")
+                    ],
+                    
+                    season: .summer,
+                    gender: .male,
+                    ageGroup: .adult,
+                ),
+                OutfitCard(
+                    author: "@sofaa",
+                    photos: ["sea_female"],
+                    items: [
+                        FashionItem(name: "Кофта", wbArticle: 2234532, price: 12999.0, brand: "The North Face"),
+                        FashionItem(name: "Джинсы", wbArticle: 8234339, price: 15799.0, brand: "Levi's"),
+                        FashionItem(name: "Босоножки", wbArticle: 7334531, price: 7999.0, brand: "Dr. Martens")
+                    ],
+                    
+                    season: .spring,
+                    gender: .female,
+                    ageGroup: .young,
+                ),
+                OutfitCard(
+                    author: "@nikita_kuznetsov",
+                    photos: ["cantry_man"],
+                    items: [
+                        FashionItem(name: "Шляпа", wbArticle: 2234532, price: 2999.0, brand: "The North Face"),
+                        FashionItem(name: "Рубашка", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
+                        FashionItem(name: "Джинсы", wbArticle: 7334531, price: 4999.0, brand: "Dr. Martens"),
+                        FashionItem(name: "Ботинки", wbArticle: 8234339, price: 8799.0, brand: "Levi's")
+                    ],
+                    
+                    season: .spring,
+                    gender: .male,
+                    ageGroup: .adult,
+                ),
+                OutfitCard(
+                    author: "@awentodor_Italy",
+                    photos: ["cantry_women"],
+                    items: [
+                        FashionItem(name: "Плед", wbArticle: 2234532, price: 2999.0, brand: "The North Face"),
+                        FashionItem(name: "Платье", wbArticle: 8234339, price: 8799.0, brand: "Levi's"),
+                        FashionItem(name: "Браслет", wbArticle: 7334531, price: 2399.0, brand: "Dr. Martens"),
+                        FashionItem(name: "Ботинки", wbArticle: 8234339, price: 11799.0, brand: "Levi's")
+                    ],
+                    
+                    season: .autumn,
+                    gender: .female,
+                    ageGroup: .adult,
+                ),
+                OutfitCard(
+                    author: "@manilov",
+                    photos: ["chicago"],
+                    items: [
+                        FashionItem(name: "Шляпа", wbArticle: 2234532, price: 2999.0, brand: "The North Face"),
+                        FashionItem(name: "Очки", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
+                        FashionItem(name: "Рубашка", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
+                        FashionItem(name: "Галстук", wbArticle: 7334531, price: 2399.0, brand: "Dr. Martens"),
+                        FashionItem(name: "Жилет", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
+                        FashionItem(name: "Часы", wbArticle: 7334531, price: 2399.0, brand: "Shelby Ltd."),
+                        FashionItem(name: "Пиджак", wbArticle: 7334531, price: 8399.0, brand: "Dr. Martens"),
+                        FashionItem(name: "Брюки", wbArticle: 8234339, price: 7799.0, brand: "Levi's"),
+                        FashionItem(name: "Туфли", wbArticle: 8234339, price: 9799.0, brand: "Levi's"),
+                        FashionItem(name: "Носки", wbArticle: 8234339, price: 1199.0, brand: "Levi's"),
+                        FashionItem(name: "Синий пиджак", wbArticle: 8234339, price: 10799.0, brand: "Levi's"),
+                    ],
+                    
+                    season: .autumn,
+                    gender: .male,
+                    ageGroup: .adult,
+                ),
+                OutfitCard(
+                    author: "@sofaa",
+                    photos: ["city_style"],
+                    items: [
+                        FashionItem(name: "Топ", wbArticle: 2234532, price: 3999.0, brand: "Levi's"),
+                        FashionItem(name: "Жилет", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
+                        FashionItem(name: "Юбка", wbArticle: 8234339, price: 5799.0, brand: "Levi's"),
+                        FashionItem(name: "Пальто", wbArticle: 7334531, price: 8399.0, brand: "Dr. Martens"),
+                        FashionItem(name: "Туфли", wbArticle: 8234339, price: 3799.0, brand: "Levi's")
+                    ],
+                    
+                    season: .autumn,
+                    gender: .female,
+                    ageGroup: .young,
+                ),
+                OutfitCard(
+                    author: "@sofaa",
+                    photos: ["style_white"],
+                    items: [
+                        FashionItem(name: "Платье", wbArticle: 2234532, price: 7999.0, brand: "Levi's"),
+                        FashionItem(name: "Сумка", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
+                        FashionItem(name: "Очки", wbArticle: 8234339, price: 4799.0, brand: "Levi's"),
+                        FashionItem(name: "Туфли", wbArticle: 7334531, price: 7399.0, brand: "Dr. Martens")
+                    ],
+                    
+                    season: .autumn,
+                    gender: .female,
+                    ageGroup: .young,
+                ),
+                OutfitCard(
+                    author: "@lu_kang",
+                    photos: ["kndr"],
+                    items: [
+                        FashionItem(name: "Рубашка", wbArticle: 2234532, price: 1999.0, brand: "Levi's"),
+                        FashionItem(name: "Джинсовка", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
+                        FashionItem(name: "Брюки", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
+                        FashionItem(name: "Носки", wbArticle: 8234339, price: 199.0, brand: "Levi's"),
+                        FashionItem(name: "Кеды", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
+                        FashionItem(name: "Плащ", wbArticle: 8234339, price: 4299.0, brand: "Levi's")
+                    ],
+                    
+                    season: .spring,
+                    gender: .male,
+                    ageGroup: .young,
+                ),
+                OutfitCard(
+                    author: "@lu_kang",
+                    photos: ["young80"],
+                    items: [
+                        FashionItem(name: "Кофта", wbArticle: 2234532, price: 1999.0, brand: "Levi's"),
+                        FashionItem(name: "Брюки", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
+                        FashionItem(name: "Ремень", wbArticle: 8234339, price: 799.0, brand: "Levi's"),
+                        FashionItem(name: "Носки", wbArticle: 8234339, price: 299.0, brand: "Levi's"),
+                        FashionItem(name: "Кросовки", wbArticle: 8234339, price: 4799.0, brand: "Levi's"),
+                        FashionItem(name: "Чемодан", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
+                        FashionItem(name: "Очки", wbArticle: 8234339, price: 1699.0, brand: "Levi's"),
+                        FashionItem(name: "Подвеска", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
+                        FashionItem(name: "Зонт", wbArticle: 8234339, price: 4299.0, brand: "Levi's")
+                    ],
+                    
+                    season: .autumn,
+                    gender: .male,
+                    ageGroup: .young,
+                ),
+                OutfitCard(
+                    author: "@zelda",
+                    photos: ["bocho"],
+                    items: [
+                        FashionItem(name: "Платье", wbArticle: 2234532, price: 4999.0, brand: "Levi's"),
+                        FashionItem(name: "Ремень", wbArticle: 8234339, price: 2799.0, brand: "Levi's"),
+                        FashionItem(name: "Накидка", wbArticle: 8234339, price: 5799.0, brand: "Levi's"),
+                        FashionItem(name: "Туфли", wbArticle: 8234339, price: 6299.0, brand: "Levi's")
+                    ],
+                    
+                    season: .spring,
+                    gender: .female,
+                    ageGroup: .young,
+                ),
+                OutfitCard(
+                    author: "@zelda",
+                    photos: ["busines_women"],
+                    items: [
+                        FashionItem(name: "Очки", wbArticle: 2234532, price: 1999.0, brand: "Levi's"),
+                        FashionItem(name: "Блузка", wbArticle: 8234339, price: 3799.0, brand: "Levi's"),
+                        FashionItem(name: "Пиджак", wbArticle: 8234339, price: 4799.0, brand: "Levi's"),
+                        FashionItem(name: "Брюки", wbArticle: 8234339, price: 3299.0, brand: "Levi's"),
+                        FashionItem(name: "Сумка", wbArticle: 8234339, price: 4799.0, brand: "Levi's"),
+                        FashionItem(name: "Туфли", wbArticle: 8234339, price: 5799.0, brand: "Levi's"),
+                        FashionItem(name: "Пальто", wbArticle: 8234339, price: 6799.0, brand: "Levi's"),
+                    ],
+                    
+                    season: .autumn,
+                    gender: .female,
+                    ageGroup: .adult,
+                ),
+            ]
+        }
+        
     
     // Текущий выбранный наряд (для детального просмотра)
     @Published var selectedOutfit: OutfitCard?
