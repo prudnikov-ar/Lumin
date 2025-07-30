@@ -17,55 +17,56 @@ final class OutfitViewModel: ObservableObject {
         Task { @MainActor in
             await self.loadOutfits()
         }
-    
-    // MARK: - Network Operations
-    
-    @MainActor
-    func loadOutfits() {
-        isLoading = true
-        errorMessage = nil
+    }
         
-        Task {
-            do {
-                let fetchedOutfits = try await networkManager.fetchOutfits()
-                outfits = fetchedOutfits
-            } catch {
-                errorMessage = error.localizedDescription
-                // Если сеть недоступна, загружаем локальные данные
-                loadLocalOutfits()
-            }
-            isLoading = false
-        }
-    }
-    
-    @MainActor
-    func createOutfit(_ outfit: OutfitCard) async {
-        do {
-            try await networkManager.createOutfit(outfit)
-            outfits.append(outfit)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-    
-    @MainActor
-    func toggleFavorite(for outfit: OutfitCard) async {
-        if let index = outfits.firstIndex(where: { $0.id == outfit.id }) {
-            let newFavoriteState = !outfits[index].isFavorite
-            outfits[index].isFavorite = newFavoriteState
+        // MARK: - Network Operations
+        
+        @MainActor
+        func loadOutfits() {
+            isLoading = true
+            errorMessage = nil
             
+            Task {
+                do {
+                    let fetchedOutfits = try await networkManager.fetchOutfits()
+                    outfits = fetchedOutfits
+                } catch {
+                    errorMessage = error.localizedDescription
+                    // Если сеть недоступна, загружаем локальные данные
+                    loadLocalOutfits()
+                }
+                isLoading = false
+            }
+        }
+        
+        @MainActor
+        func createOutfit(_ outfit: OutfitCard) async {
             do {
-                try await networkManager.toggleFavorite(outfitId: outfit.id, isFavorite: newFavoriteState)
+                try await networkManager.createOutfit(outfit)
+                outfits.append(outfit)
             } catch {
-                // Откатываем изменения при ошибке
-                outfits[index].isFavorite = !newFavoriteState
                 errorMessage = error.localizedDescription
             }
         }
-    }
-    
-    // MARK: - Local Data (Fallback)
-    
+        
+        @MainActor
+        func toggleFavorite(for outfit: OutfitCard) async {
+            if let index = outfits.firstIndex(where: { $0.id == outfit.id }) {
+                let newFavoriteState = !outfits[index].isFavorite
+                outfits[index].isFavorite = newFavoriteState
+                
+                do {
+                    try await networkManager.toggleFavorite(outfitId: outfit.id, isFavorite: newFavoriteState)
+                } catch {
+                    // Откатываем изменения при ошибке
+                    outfits[index].isFavorite = !newFavoriteState
+                    errorMessage = error.localizedDescription
+                }
+            }
+        }
+        
+        // MARK: - Local Data (Fallback)
+        
         private func loadLocalOutfits() {
             outfits = [
                 OutfitCard(
@@ -275,29 +276,30 @@ final class OutfitViewModel: ObservableObject {
             ]
         }
         
-    
-    // Текущий выбранный наряд (для детального просмотра)
-    @Published var selectedOutfit: OutfitCard?
-    
-    // Фильтры
-    @Published var selectedSeason: Season = .all
-    @Published var selectedGender: Gender = .all
-    @Published var selectedAgeGroup: AgeGroup = .all
-    
-    // Избранные наряды
-    var favoriteOutfits: [OutfitCard] {
-        outfits.filter { $0.isFavorite }
-    }
-    
-    // Отфильтрованные наряды
-    var filteredOutfits: [OutfitCard] {
-        outfits.filter { outfit in
-            let seasonMatch = selectedSeason == .all || outfit.season == selectedSeason
-            let genderMatch = selectedGender == .all || outfit.gender == selectedGender
-            let ageMatch = selectedAgeGroup == .all || outfit.ageGroup == selectedAgeGroup
-            return seasonMatch && genderMatch && ageMatch
+        
+        // Текущий выбранный наряд (для детального просмотра)
+        @Published var selectedOutfit: OutfitCard?
+        
+        // Фильтры
+        @Published var selectedSeason: Season = .all
+        @Published var selectedGender: Gender = .all
+        @Published var selectedAgeGroup: AgeGroup = .all
+        
+        // Избранные наряды
+        var favoriteOutfits: [OutfitCard] {
+            outfits.filter { $0.isFavorite }
         }
+        
+        // Отфильтрованные наряды
+        var filteredOutfits: [OutfitCard] {
+            outfits.filter { outfit in
+                let seasonMatch = selectedSeason == .all || outfit.season == selectedSeason
+                let genderMatch = selectedGender == .all || outfit.gender == selectedGender
+                let ageMatch = selectedAgeGroup == .all || outfit.ageGroup == selectedAgeGroup
+                return seasonMatch && genderMatch && ageMatch
+            }
+        }
+        
+        
     }
-    
 
-}

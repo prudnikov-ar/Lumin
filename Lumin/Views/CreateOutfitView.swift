@@ -303,6 +303,6 @@ struct AddItemView: View {
     }
 }
 
-#Preview {
-    CreateOutfitView(profileViewModel: ProfileViewModel(outfitViewModel: <#OutfitViewModel#>))
-} 
+//#Preview {
+//    CreateOutfitView(profileViewModel: ProfileViewModel())
+//}
