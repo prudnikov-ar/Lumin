@@ -11,6 +11,8 @@ struct SearchView: View {
     @ObservedObject var outfitViewModel: OutfitViewModel
     @State private var searchText = ""
     @State private var showingFilters = false
+    @State private var showingSearchField = false
+    @FocusState private var isFocused: Bool
     @State private var selectedOutfit: OutfitCard?
     
     private let columns = [
@@ -34,19 +36,12 @@ struct SearchView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // Поисковая строка
                 HStack {
-                    HStack {
-                        Image(systemName: "magnifyingglass")
-                            .foregroundColor(.gray)
-                        
-                        TextField("Поиск нарядов...", text: $searchText)
-                            .textFieldStyle(PlainTextFieldStyle())
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
+                    Text("Lumin")
+                        .font(.largeTitle)
+                        .bold()
+                        .padding()
+                    Spacer()
                     
                     Button(action: { showingFilters.toggle() }) {
                         Image(systemName: "slider.horizontal.3")
@@ -54,10 +49,47 @@ struct SearchView: View {
                             .padding(8)
                             .background(Color(.systemGray6))
                             .cornerRadius(8)
+                            
+                    }
+                    Button(action: {
+                        withAnimation {
+                            showingSearchField.toggle()
+                            isFocused.toggle()
+                            if !showingSearchField {
+                                searchText = ""
+                            }
+                        }
+                    }) {
+                        Image(systemName: showingSearchField ? "chevron.up" : "magnifyingglass")
+                            .foregroundColor(.primary)
+                            .padding(8)
+                            .frame(minHeight: 35)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(8)
+                            .padding(.trailing, 20)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                // Поисковая строка
+                if showingSearchField {
+//                    HStack {
+//                        HStack {
+                            //                        Image(systemName: "magnifyingglass")
+                            //                            .foregroundColor(.gray)
+                            
+                            TextField("Поиск нарядов...", text: $searchText)
+                                .textFieldStyle(PlainTextFieldStyle())
+                                .focused($isFocused)
+                                .padding()
+//                        }
+//                        .padding(.horizontal, 12)
+//                        .padding(.vertical, 8)
+//                        //                    .background(Color(.systemGray6))
+//                        .cornerRadius(10)
+                        
+//                    }
+//                    .padding(.horizontal, 16)
+//                    .padding(.vertical, 12)
+                }
                 
                 // Активные фильтры
                 if outfitViewModel.selectedSeason != .all || 
@@ -160,8 +192,8 @@ struct SearchView: View {
                     await outfitViewModel.loadOutfits(refresh: true)
                 }
             }
-            .navigationTitle("Lumin")
-            .navigationBarTitleDisplayMode(.large)
+//            .navigationTitle("Lumin")
+//            .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $showingFilters) {
                 FilterView(outfitViewModel: outfitViewModel)
             }

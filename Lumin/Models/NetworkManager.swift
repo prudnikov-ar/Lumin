@@ -20,7 +20,7 @@ class NetworkManager: ObservableObject {
     // MARK: - Authentication Headers
     
     private func getAuthHeaders() -> [String: String] {
-        var headers = [
+        let headers = [
             "Authorization": "Bearer \(apiKey)",
             "Content-Type": "application/json",
             "apikey": apiKey
