@@ -33,6 +33,17 @@ struct OutfitCardView: View {
                                         .scaleEffect(0.8)
                                 )
                         }
+                        .id("\(photoURL)_\(outfit.id)") // Уникальный ID для каждой карточки
+                        .onAppear {
+                            print("🖼️ Loading image from URL: \(photoURL)")
+                        }
+                        .onDisappear {
+                            print("🖼️ Disappeared image: \(photoURL)")
+                        }
+                        .task {
+                            // Принудительно обновляем изображение при появлении
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                        }
                     } else if photoURL.hasPrefix("camera_photo_") {
                         // Временное фото из камеры - показываем заглушку
                         Rectangle()
@@ -70,6 +81,7 @@ struct OutfitCardView: View {
                                     .blur(radius: 1)
                             )
                     }
+                    .id("favorite_\(outfit.id)_\(outfit.isFavorite)") // Принудительное обновление
                     .padding(.trailing, 6)
                     .padding(.top, -44) // Поднимаем кнопку выше
                 }

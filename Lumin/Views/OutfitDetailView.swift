@@ -22,6 +22,11 @@ struct OutfitDetailView: View {
         self._isFavorite = State(initialValue: outfit.isFavorite)
     }
     
+    // Обновляем состояние избранного при изменении outfit
+    private func updateFavoriteState() {
+        isFavorite = outfit.isFavorite
+    }
+    
     var body: some View {
         NavigationView {
             ScrollView {
@@ -142,6 +147,19 @@ struct OutfitDetailView: View {
             .navigationTitle("Детали наряда")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        isFavorite.toggle()
+                        onFavoriteToggle()
+                        updateFavoriteState() // Обновляем состояние
+                    }) {
+                        Image(systemName: isFavorite ? "heart.fill" : "heart")
+                            .foregroundColor(isFavorite ? .red : .primary)
+                            .font(.title2)
+                    }
+                    .id("detail_favorite_\(outfit.id)_\(isFavorite)") // Принудительное обновление
+                }
+                
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Закрыть") {
                         dismiss()

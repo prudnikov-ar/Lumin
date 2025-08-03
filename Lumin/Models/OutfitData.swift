@@ -28,7 +28,9 @@ final class OutfitViewModel: ObservableObject {
     func loadOutfits(refresh: Bool = false) async {
         if refresh {
             currentPage = 0
-            outfits = []
+            // Сохраняем новые наряды, созданные локально
+            let localOutfits = outfits.filter { $0.createdAt > Date().addingTimeInterval(-300) } // Последние 5 минут
+            outfits = localOutfits
             hasMoreData = true
         }
         
@@ -41,7 +43,11 @@ final class OutfitViewModel: ObservableObject {
             let fetchedOutfits = try await networkManager.fetchOutfits(page: currentPage, pageSize: pageSize)
             
             if refresh {
-                outfits = fetchedOutfits
+                // Добавляем серверные наряды к локальным
+                let serverOutfits = fetchedOutfits.filter { serverOutfit in
+                    !outfits.contains { $0.id == serverOutfit.id }
+                }
+                outfits.insert(contentsOf: serverOutfits, at: 0)
             } else {
                 outfits.append(contentsOf: fetchedOutfits)
             }
@@ -77,13 +83,39 @@ final class OutfitViewModel: ObservableObject {
             let newFavoriteState = !outfits[index].isFavorite
             outfits[index].isFavorite = newFavoriteState
             
+            print("💖 Toggling favorite for outfit \(outfit.id): \(newFavoriteState)")
+            
             do {
+                // Обновляем в базе данных нарядов
                 try await networkManager.toggleFavorite(outfitId: outfit.id, isFavorite: newFavoriteState)
+                
+                // Обновляем в профиле пользователя
+                try await networkManager.updateUserFavorites(outfitId: outfit.id.uuidString, isFavorite: newFavoriteState)
+                
+                print("✅ Favorite updated in database")
             } catch {
                 // Откатываем изменения при ошибке
                 outfits[index].isFavorite = !newFavoriteState
                 errorMessage = error.localizedDescription
+                print("❌ Failed to update favorite: \(error)")
             }
+        }
+    }
+    
+    @MainActor
+    func deleteOutfit(_ outfit: OutfitCard) async {
+        do {
+            try await networkManager.deleteOutfit(outfit)
+            
+            // Удаляем из локального списка
+            if let index = outfits.firstIndex(where: { $0.id == outfit.id }) {
+                outfits.remove(at: index)
+            }
+            
+            print("✅ Outfit deleted successfully")
+        } catch {
+            errorMessage = error.localizedDescription
+            print("❌ Failed to delete outfit: \(error)")
         }
     }
     

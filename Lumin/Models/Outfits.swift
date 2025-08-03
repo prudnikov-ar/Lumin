@@ -12,7 +12,6 @@ struct OutfitCard: Identifiable, Hashable, Codable {
     let author: String              // "Summer Casual", "Evening Elegance"
     let photos: [String]           // URL или названия изображений (макс. 2)
     let items: [FashionItem]       // Элементы одежды с ссылками
-    let itemCount: Int             // Количество элементов (3 items)
     var isFavorite: Bool = false   // Добавлено в избранное
     let season: Season             // Сезон
     let gender: Gender             // Пол
@@ -20,15 +19,63 @@ struct OutfitCard: Identifiable, Hashable, Codable {
     let createdAt: Date            // Дата создания
     
     init(author: String, photos: [String], items: [FashionItem], season: Season, gender: Gender, ageGroup: AgeGroup) {
-        self.id = UUID()
+        self.id = UUID() // Временно оставляем для совместимости
         self.author = author
         self.photos = photos
         self.items = items
-        self.itemCount = items.count
         self.season = season
         self.gender = gender
         self.ageGroup = ageGroup
         self.createdAt = Date()
+    }
+    
+
+    
+    // Кодирование для соответствия структуре базы данных
+    // Исключаем itemCount из кодирования, так как его нет в базе данных
+    enum CodingKeys: String, CodingKey {
+        case id
+        case author
+        case photos
+        case items
+        case season
+        case gender
+        case ageGroup = "age_group"
+        case isFavorite = "is_favorite"
+        case createdAt = "created_at"
+    }
+    
+    // Кастомный декодер для обработки даты
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        id = try container.decode(UUID.self, forKey: .id)
+        author = try container.decode(String.self, forKey: .author)
+        photos = try container.decode([String].self, forKey: .photos)
+        items = try container.decode([FashionItem].self, forKey: .items)
+        season = try container.decode(Season.self, forKey: .season)
+        gender = try container.decode(Gender.self, forKey: .gender)
+        ageGroup = try container.decode(AgeGroup.self, forKey: .ageGroup)
+        isFavorite = try container.decode(Bool.self, forKey: .isFavorite)
+        
+        // Обрабатываем дату как строку и конвертируем в Date
+        let dateString = try container.decode(String.self, forKey: .createdAt)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        if let date = formatter.date(from: dateString) {
+            createdAt = date
+        } else {
+            // Fallback для других форматов даты
+            let fallbackFormatter = DateFormatter()
+            fallbackFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'"
+            createdAt = fallbackFormatter.date(from: dateString) ?? Date()
+        }
+    }
+    
+    // Вычисляемое свойство для количества элементов
+    var itemCount: Int {
+        return items.count
     }
 }
 
@@ -56,6 +103,7 @@ struct User: Identifiable, Codable {
     let email: String
     var profileImage: String?
     var socialLinks: [SocialLink]
+    var favoriteOutfitIds: [String] // ID избранных нарядов
     var outfits: [OutfitCard]      // Созданные пользователем наряды
     
     init(username: String, email: String, profileImage: String? = nil) {
@@ -64,6 +112,7 @@ struct User: Identifiable, Codable {
         self.email = email
         self.profileImage = profileImage
         self.socialLinks = []
+        self.favoriteOutfitIds = []
         self.outfits = []
     }
 }

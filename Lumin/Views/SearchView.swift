@@ -22,9 +22,9 @@ struct SearchView: View {
     var filteredBySearch: [OutfitCard] {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            return outfitViewModel.filteredOutfits
+            return outfitViewModel.outfits // Используем напрямую outfits вместо filteredOutfits
         } else {
-            return outfitViewModel.filteredOutfits.filter { card in
+            return outfitViewModel.outfits.filter { card in
                 let author = card.author.replacingOccurrences(of: "@", with: "").lowercased()
                 return author.contains(trimmed.lowercased())
             }

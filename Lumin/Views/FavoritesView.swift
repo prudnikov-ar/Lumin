@@ -11,6 +11,8 @@ struct FavoritesView: View {
     @ObservedObject var outfitViewModel: OutfitViewModel
     @Binding var selectedTab: Int
     @State private var selectedOutfit: OutfitCard?
+    @State private var showingDeleteAlert = false
+    @State private var outfitToDelete: OutfitCard?
     
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -65,6 +67,13 @@ struct FavoritesView: View {
                                         selectedOutfit = outfit
                                     }
                                 )
+                                .contextMenu {
+                                    Button("Убрать из избранного", role: .destructive) {
+                                        Task {
+                                            await outfitViewModel.toggleFavorite(for: outfit)
+                                        }
+                                    }
+                                }
                             }
                         }
                         .padding(.horizontal, 16)

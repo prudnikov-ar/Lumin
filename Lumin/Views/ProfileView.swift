@@ -10,12 +10,15 @@ import PhotosUI
 
 struct ProfileView: View {
     @ObservedObject var profileViewModel: ProfileViewModel
+    @EnvironmentObject var outfitViewModel: OutfitViewModel
     @State private var showingCreateOutfit = false
     @State private var selectedOutfit: OutfitCard?
     @State private var isEditingNick = false
     @State private var newNick = ""
     @State private var showingImagePicker = false
     @State private var selectedPhoto: PhotosPickerItem?
+    @State private var showingDeleteAlert = false
+    @State private var outfitToDelete: OutfitCard?
     
     private let columns = [
         GridItem(.flexible(), spacing: 12),
@@ -217,7 +220,9 @@ struct ProfileView: View {
                                     OutfitCardView(
                                         outfit: outfit,
                                         onFavoriteToggle: {
-                                            // В профиле можно убрать из избранного
+                                            Task {
+                                                await outfitViewModel.toggleFavorite(for: outfit)
+                                            }
                                         },
                                         onCardTap: {
                                             selectedOutfit = outfit
@@ -225,7 +230,8 @@ struct ProfileView: View {
                                     )
                                     .contextMenu {
                                         Button("Удалить", role: .destructive) {
-                                            profileViewModel.deleteOutfit(outfit)
+                                            outfitToDelete = outfit
+                                            showingDeleteAlert = true
                                         }
                                     }
                                 }
@@ -260,7 +266,9 @@ struct ProfileView: View {
                 OutfitDetailView(
                     outfit: outfit,
                     onFavoriteToggle: {
-                        // В профиле можно убрать из избранного
+                        Task {
+                            await outfitViewModel.toggleFavorite(for: outfit)
+                        }
                     }
                 )
             }
@@ -276,6 +284,18 @@ struct ProfileView: View {
                 Button("OK") { }
             } message: {
                 Text(profileViewModel.alertMessage)
+            }
+            .alert("Удалить наряд", isPresented: $showingDeleteAlert) {
+                Button("Отмена", role: .cancel) { }
+                Button("Удалить", role: .destructive) {
+                    if let outfit = outfitToDelete {
+                        Task {
+                            await profileViewModel.deleteOutfit(outfit)
+                        }
+                    }
+                }
+            } message: {
+                Text("Вы уверены, что хотите удалить этот наряд? Это действие нельзя отменить.")
             }
         }
     }

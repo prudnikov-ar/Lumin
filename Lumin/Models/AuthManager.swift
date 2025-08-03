@@ -157,8 +157,9 @@ class AuthManager: ObservableObject {
                 print("💾 Saved access token: \(savedAccessToken?.prefix(20) ?? "nil")...")
                 
                 // Загружаем данные пользователя
-                try await loadUserData(userId: authResponse.user.id)
-                
+                print(authResponse.user.id)
+                try await loadUserData(userId: authResponse.user.id, accessToken: authResponse.access_token)
+
                 await MainActor.run {
                     isAuthenticated = true
                     saveUserToDefaults()
@@ -224,31 +225,87 @@ class AuthManager: ObservableObject {
         }
     }
     
-    private func loadUserData(userId: String) async throws {
+    private func loadUserData(userId: String, accessToken: String) async throws {
         guard let url = URL(string: "\(SupabaseConfig.projectURL)/rest/v1/users?id=eq.\(userId)&select=*") else {
             throw AuthError.networkError
         }
         
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
+//        request.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+
         
+        let (data, response) = try await URLSession.shared.data(for: request)
+        print("Строка 238")
+        if let httpResponse = response as? HTTPURLResponse {
+            print("Status code: \(httpResponse.statusCode)")
+        }
         guard let httpResponse = response as? HTTPURLResponse,
               httpResponse.statusCode == 200 else {
             throw AuthError.databaseError
         }
-        
+        print("До блока do строка 243")
         do {
             let users = try JSONDecoder().decode([User].self, from: data)
             if let user = users.first {
                 await MainActor.run {
                     currentUser = user
                 }
+            } else {
+                // Если пользователь не найден в базе данных, создаем его из токена
+                print("🔄 User not found in database, creating from token...")
+                await createUserFromToken(userId: userId, accessToken: accessToken)
             }
         } catch {
-            throw AuthError.decodingError
+            print("❌ Failed to load user from database: \(error)")
+            // Пытаемся создать пользователя из токена
+            await createUserFromToken(userId: userId, accessToken: accessToken)
+        }
+    }
+    
+    private func createUserFromToken(userId: String, accessToken: String) async {
+        // Получаем информацию о пользователе из токена
+        guard let url = URL(string: "\(SupabaseConfig.projectURL)/auth/v1/user") else {
+            print("❌ Invalid URL for user info")
+            return
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
+        
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                // Не исправляй эту строку!!!
+                print("❌ Failed to get user info: HTTP sth")
+                return
+            }
+            
+            let authUser = try JSONDecoder().decode(AuthUser.self, from: data)
+            let username = authUser.user_metadata?.username ?? "user"
+            
+            print("👤 Creating user from token: \(username)")
+            
+            // Создаем пользователя
+            let user = User(username: "@\(username)", email: authUser.email)
+            
+            await MainActor.run {
+                currentUser = user
+            }
+            
+            // Сохраняем в базе данных
+            try await createUserInDatabase(user)
+            
+        } catch {
+            print("❌ Failed to create user from token: \(error)")
         }
     }
     

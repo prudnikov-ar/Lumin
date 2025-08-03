@@ -45,19 +45,7 @@ final class ProfileViewModel: ObservableObject {
     // Удалить наряд
     func deleteOutfit(_ outfit: OutfitCard) {
         Task {
-            do {
-                // TODO: Реализовать удаление через API
-                if let index = outfitViewModel.outfits.firstIndex(where: { $0.id == outfit.id }) {
-                    await MainActor.run {
-                        outfitViewModel.outfits.remove(at: index)
-                    }
-                }
-            } catch {
-                await MainActor.run {
-                    alertMessage = error.localizedDescription
-                    showAlert = true
-                }
-            }
+            await outfitViewModel.deleteOutfit(outfit)
         }
     }
     
