@@ -101,7 +101,7 @@ final class ProfileViewModel: ObservableObject {
     }
     
     // Выйти из аккаунта
-    func signOut() {
-        authManager.signOut()
+    func signOut() async {
+        await authManager.signOut()
     }
 } 

@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		DB33DC382E3F6C4600106737 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = DB33DC372E3F6C4600106737 /* Auth */; };
+		DB33DC3A2E3F6C4600106737 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = DB33DC392E3F6C4600106737 /* PostgREST */; };
+		DB33DC3C2E3F6C4600106737 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = DB33DC3B2E3F6C4600106737 /* Storage */; };
+		DB3A0F5B2E3F6D8F008F2515 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = DB3A0F5A2E3F6D8F008F2515 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		DB4392932E0ED829002660BD /* Lumin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lumin.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,16 +43,28 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DB3A0F5B2E3F6D8F008F2515 /* Supabase in Frameworks */,
+				DB33DC3C2E3F6C4600106737 /* Storage in Frameworks */,
+				DB33DC3A2E3F6C4600106737 /* PostgREST in Frameworks */,
+				DB33DC382E3F6C4600106737 /* Auth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		DB3A0F592E3F6D8F008F2515 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		DB43928A2E0ED829002660BD = {
 			isa = PBXGroup;
 			children = (
 				DB4392952E0ED829002660BD /* Lumin */,
+				DB3A0F592E3F6D8F008F2515 /* Frameworks */,
 				DB4392942E0ED829002660BD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -78,6 +97,10 @@
 			);
 			name = Lumin;
 			packageProductDependencies = (
+				DB33DC372E3F6C4600106737 /* Auth */,
+				DB33DC392E3F6C4600106737 /* PostgREST */,
+				DB33DC3B2E3F6C4600106737 /* Storage */,
+				DB3A0F5A2E3F6D8F008F2515 /* Supabase */,
 			);
 			productName = Lumin;
 			productReference = DB4392932E0ED829002660BD /* Lumin.app */;
@@ -107,6 +130,9 @@
 			);
 			mainGroup = DB43928A2E0ED829002660BD;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DB33DC362E3F6C4600106737 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = DB4392942E0ED829002660BD /* Products */;
 			projectDirPath = "";
@@ -341,6 +367,40 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DB33DC362E3F6C4600106737 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase-community/supabase-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		DB33DC372E3F6C4600106737 /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DB33DC362E3F6C4600106737 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		DB33DC392E3F6C4600106737 /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DB33DC362E3F6C4600106737 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		DB33DC3B2E3F6C4600106737 /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DB33DC362E3F6C4600106737 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		DB3A0F5A2E3F6D8F008F2515 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DB33DC362E3F6C4600106737 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = DB43928B2E0ED829002660BD /* Project object */;
 }

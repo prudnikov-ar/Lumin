@@ -25,7 +25,9 @@ struct StorageTestView: View {
                     .fontWeight(.semibold)
                 
                 Button("Выйти") {
-                    AuthManager.shared.signOut()
+                    Task {
+                        await AuthManager.shared.signOut()
+                    }
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.red)

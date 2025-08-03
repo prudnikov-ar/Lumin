@@ -6,9 +6,10 @@
 //
 
 import Foundation
+import Supabase
 
 struct SupabaseConfig {
-    // TODO: Замените на ваши реальные данные из Supabase
+    // Конфигурация Supabase
     static let projectURL = "https://bmnzugozbvpeurndgiba.supabase.co"
     static let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtbnp1Z296YnZwZXVybmRnaWJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4NjMyMzMsImV4cCI6MjA2OTQzOTIzM30.nXKBOY9iPT5WaQVECNgjlcQZJozKbUPgoUBsxlD68II"
     
@@ -19,6 +20,12 @@ struct SupabaseConfig {
     // Настройки для API
     static let timeoutInterval: TimeInterval = 30
     static let maxRetries = 3
+    
+    // Создание клиента Supabase
+    static let client = SupabaseClient(
+        supabaseURL: URL(string: projectURL)!,
+        supabaseKey: anonKey
+    )
 }
 
 // MARK: - Database Schema

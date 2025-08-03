@@ -252,7 +252,9 @@ struct ProfileView: View {
                         }
                         
                         Button("Выйти", role: .destructive) {
-                            profileViewModel.signOut()
+                            Task {
+                                await profileViewModel.signOut()
+                            }
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")

@@ -104,7 +104,7 @@ struct User: Identifiable, Codable {
     var profileImage: String?
     var socialLinks: [SocialLink]
     var favoriteOutfitIds: [String] // ID избранных нарядов
-    var outfits: [OutfitCard]      // Созданные пользователем наряды
+    var outfits: [OutfitCard]? // Созданные пользователем наряды (опциональное для Decodable)
     
     init(username: String, email: String, profileImage: String? = nil) {
         self.id = UUID()
@@ -114,6 +114,17 @@ struct User: Identifiable, Codable {
         self.socialLinks = []
         self.favoriteOutfitIds = []
         self.outfits = []
+    }
+    
+    // Кодирование для соответствия структуре базы данных
+    enum CodingKeys: String, CodingKey {
+        case id
+        case username
+        case email
+        case profileImage = "profile_image"
+        case socialLinks = "social_links"
+        case favoriteOutfitIds = "favorite_outfits"
+        case outfits
     }
 }
 

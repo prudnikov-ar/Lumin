@@ -6,25 +6,29 @@
 //
 
 import Foundation
-import Combine
+import SwiftUI
+import Supabase
 
-class AuthManager: ObservableObject {
+final class AuthManager: ObservableObject {
     static let shared = AuthManager()
     
     @Published var currentUser: User?
     @Published var isAuthenticated = false
     @Published var isLoading = false
     
-    private let networkManager = NetworkManager.shared
     private let userDefaults = UserDefaults.standard
+    private let supabaseClient = SupabaseConfig.client
     
     private init() {
+        print("🔧 AuthManager: Initializing...")
         loadUserFromDefaults()
     }
     
     // MARK: - Authentication Methods
     
     func signUp(email: String, username: String, password: String) async throws {
+        print("🚀 AuthManager: Starting sign up for \(email)")
+        
         await MainActor.run {
             isLoading = true
         }
@@ -35,71 +39,41 @@ class AuthManager: ObservableObject {
             }
         }
         
-        // Создаем пользователя в Supabase Auth
-        let signUpData: [String: Any] = [
-            "email": email,
-            "password": password,
-            "data": [
-                "username": username
-            ]
-        ]
-        
-        guard let url = URL(string: "\(SupabaseConfig.projectURL)/auth/v1/signup") else {
-            throw AuthError.networkError
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
-        
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: signUpData)
-        } catch {
-            throw AuthError.encodingError
-        }
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AuthError.networkError
-        }
-        
-        if httpResponse.statusCode == 200 {
-            if let responseString = String(data: data, encoding: .utf8) {
-                print("✅ SignUp 200 body: \(responseString)")
-            }
-            do {
-                let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
-                
-                // Создаем пользователя в базе данных
-                let user = User(username: username, email: email)
-                try await createUserInDatabase(user)
+            // Регистрируем пользователя через Supabase SDK
+            let authResponse = try await supabaseClient.auth.signUp(
+                email: email,
+                password: password,
+                data: ["username": AnyJSON.string(username)]
+            )
+            
+            print("✅ AuthManager: Sign up successful for user: \(authResponse.user.id)")
+            
+            // Создаем пользователя в базе данных
+            let user = authResponse.user
+                let newUser = User(username: "@\(username)", email: email)
+                try await createUserInDatabase(newUser)
                 
                 await MainActor.run {
-                    currentUser = user
+                    currentUser = newUser
                     isAuthenticated = true
                     saveUserToDefaults()
                 }
-            } catch {
-                throw AuthError.decodingError
-            }
-        } else {
-            print("❌ SignUp error: HTTP \(httpResponse.statusCode)")
-            if let responseString = String(data: data, encoding: .utf8) {
-                print("❌ SignUp error body: \(responseString)")
-            }
-            do {
-                let errorResponse = try JSONDecoder().decode(ErrorResponse.self, from: data)
-                throw AuthError.signUpFailed(errorResponse.error_description ?? "Ошибка регистрации")
-            } catch {
-                throw AuthError.signUpFailed("Ошибка регистрации")
-            }
+                
+                print("✅ AuthManager: User created in database and saved locally")
+            
+        } catch let error as AuthError {
+            print("❌ AuthManager: Sign up failed with AuthError: \(error)")
+            throw error
+        } catch {
+            print("❌ AuthManager: Sign up failed with error: \(error)")
+            throw AuthError.signUpFailed(error.localizedDescription)
         }
     }
     
     func signIn(email: String, password: String) async throws {
+        print("🚀 AuthManager: Starting sign in for \(email)")
+        
         await MainActor.run {
             isLoading = true
         }
@@ -110,192 +84,140 @@ class AuthManager: ObservableObject {
             }
         }
         
-        let signInData: [String: Any] = [
-            "email": email,
-            "password": password
-        ]
-        
-        guard let url = URL(string: "\(SupabaseConfig.projectURL)/auth/v1/token?grant_type=password") else {
-            throw AuthError.networkError
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
-        
         do {
-            request.httpBody = try JSONSerialization.data(withJSONObject: signInData)
-        } catch {
-            throw AuthError.encodingError
-        }
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw AuthError.networkError
-        }
-        
-        if httpResponse.statusCode == 200 {
-            if let responseString = String(data: data, encoding: .utf8) {
-                print("✅ SignIn 200 body: \(responseString)")
-            }
-            do {
-                let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
+            // Входим через Supabase SDK
+            let authResponse = try await supabaseClient.auth.signIn(
+                email: email,
+                password: password
+            )
+            
+            print("✅ AuthManager: Sign in successful for user: \(authResponse.user.id)")
+            
+            // Загружаем данные пользователя из базы данных
+            let user = authResponse.user
+                try await loadUserData(userId: user.id.uuidString)
                 
-                print("🔑 Sign in successful, saving tokens...")
-                print("📝 Access token: \(authResponse.access_token.prefix(20))...")
-                print("📝 Refresh token: \(authResponse.refresh_token.prefix(20))...")
-                
-                // Сохраняем токен
-                userDefaults.set(authResponse.access_token, forKey: "accessToken")
-                userDefaults.set(authResponse.refresh_token, forKey: "refreshToken")
-                
-                // Проверяем сохранение
-                let savedAccessToken = userDefaults.string(forKey: "accessToken")
-                print("💾 Saved access token: \(savedAccessToken?.prefix(20) ?? "nil")...")
-                
-                // Загружаем данные пользователя
-                print(authResponse.user.id)
-                try await loadUserData(userId: authResponse.user.id, accessToken: authResponse.access_token)
-
                 await MainActor.run {
                     isAuthenticated = true
                     saveUserToDefaults()
                 }
-            } catch {
-                throw AuthError.decodingError
-            }
-        } else {
-            print("❌ SignIn error: HTTP \(httpResponse.statusCode)")
-            if let responseString = String(data: data, encoding: .utf8) {
-                print("❌ SignIn error body: \(responseString)")
-            }
-            do {
-                let errorResponse = try JSONDecoder().decode(ErrorResponse.self, from: data)
-                throw AuthError.signInFailed(errorResponse.error_description ?? "Ошибка входа")
-            } catch {
-                throw AuthError.signInFailed("Ошибка входа")
-            }
+                
+                print("✅ AuthManager: User data loaded and saved locally")
+            
+        } catch let error as AuthError {
+            print("❌ AuthManager: Sign in failed with AuthError: \(error)")
+            throw error
+        } catch {
+            print("❌ AuthManager: Sign in failed with error: \(error)")
+            throw AuthError.signInFailed(error.localizedDescription)
         }
     }
     
-    func signOut() {
-        currentUser = nil
-        isAuthenticated = false
-        userDefaults.removeObject(forKey: "currentUser")
-        userDefaults.removeObject(forKey: "accessToken")
-        userDefaults.removeObject(forKey: "refreshToken")
-    }
-    
-    func updateProfile(username: String) {
-        guard var user = currentUser else { return }
-        user.username = username
-        currentUser = user
-        saveUserToDefaults()
+    func signOut() async {
+        print("🚀 AuthManager: Starting sign out")
         
-        // Обновляем в базе данных
-        Task {
-            try await updateUserInDatabase(user)
+        do {
+            try await supabaseClient.auth.signOut()
+            print("✅ AuthManager: Sign out successful")
+        } catch {
+            print("❌ AuthManager: Sign out failed: \(error)")
         }
+        
+        await MainActor.run {
+            currentUser = nil
+            isAuthenticated = false
+            userDefaults.removeObject(forKey: "currentUser")
+            userDefaults.removeObject(forKey: "accessToken")
+            userDefaults.removeObject(forKey: "refreshToken")
+        }
+        
+        print("✅ AuthManager: Local data cleared")
     }
     
     // MARK: - Database Operations
     
     private func createUserInDatabase(_ user: User) async throws {
-        guard let url = URL(string: "\(SupabaseConfig.projectURL)/rest/v1/users") else {
-            throw AuthError.networkError
-        }
+        print("🔧 AuthManager: Creating user in database: \(user.username)")
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("*", forHTTPHeaderField: "Prefer")
-        
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        request.httpBody = try encoder.encode(user)
-        
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 201 else {
+        do {
+            // Создаем словарь для вставки, исключая поля, которые генерируются автоматически
+            var userData: [String: String] = [
+                "id": user.id.uuidString,
+                "username": user.username,
+                "email": user.email
+            ]
+            
+            // Добавляем profile_image только если он не nil
+            if let profileImage = user.profileImage {
+                userData["profile_image"] = profileImage
+            }
+            
+            // Добавляем JSON данные
+            if let socialLinksData = try? JSONEncoder().encode(user.socialLinks),
+               let socialLinksString = String(data: socialLinksData, encoding: .utf8) {
+                userData["social_links"] = socialLinksString
+            }
+            
+            if let favoritesData = try? JSONEncoder().encode(user.favoriteOutfitIds),
+               let favoritesString = String(data: favoritesData, encoding: .utf8) {
+                userData["favorite_outfits"] = favoritesString
+            }
+            
+            let response: [User] = try await supabaseClient
+                .from("users")
+                .insert(userData)
+                .select()
+                .execute()
+                .value
+            
+            if let createdUser = response.first {
+                print("✅ AuthManager: User created in database: \(createdUser.id)")
+            } else {
+                print("⚠️ AuthManager: No user returned from database creation")
+            }
+        } catch {
+            print("❌ AuthManager: Failed to create user in database: \(error)")
             throw AuthError.databaseError
         }
     }
     
-    private func loadUserData(userId: String, accessToken: String) async throws {
-        guard let url = URL(string: "\(SupabaseConfig.projectURL)/rest/v1/users?id=eq.\(userId)&select=*") else {
-            throw AuthError.networkError
-        }
+    private func loadUserData(userId: String) async throws {
+        print("🔧 AuthManager: Loading user data for ID: \(userId)")
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
-//        request.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        print("Строка 238")
-        if let httpResponse = response as? HTTPURLResponse {
-            print("Status code: \(httpResponse.statusCode)")
-        }
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw AuthError.databaseError
-        }
-        print("До блока do строка 243")
         do {
-            let users = try JSONDecoder().decode([User].self, from: data)
-            if let user = users.first {
+            let response: [User] = try await supabaseClient
+                .from("users")
+                .select()
+                .eq("id", value: userId)
+                .execute()
+                .value
+            
+            if let user = response.first {
                 await MainActor.run {
                     currentUser = user
                 }
+                print("✅ AuthManager: User data loaded: \(user.username)")
             } else {
-                // Если пользователь не найден в базе данных, создаем его из токена
-                print("🔄 User not found in database, creating from token...")
-                await createUserFromToken(userId: userId, accessToken: accessToken)
+                print("⚠️ AuthManager: User not found in database, creating from token...")
+                await createUserFromToken(userId: userId)
             }
         } catch {
-            print("❌ Failed to load user from database: \(error)")
-            // Пытаемся создать пользователя из токена
-            await createUserFromToken(userId: userId, accessToken: accessToken)
+            print("❌ AuthManager: Failed to load user data: \(error)")
+            await createUserFromToken(userId: userId)
         }
     }
     
-    private func createUserFromToken(userId: String, accessToken: String) async {
-        // Получаем информацию о пользователе из токена
-        guard let url = URL(string: "\(SupabaseConfig.projectURL)/auth/v1/user") else {
-            print("❌ Invalid URL for user info")
-            return
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.setValue(SupabaseConfig.anonKey, forHTTPHeaderField: "apikey")
+    private func createUserFromToken(userId: String) async {
+        print("🔧 AuthManager: Creating user from token for ID: \(userId)")
         
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let session = try await supabaseClient.auth.session
+            let email = session.user.email ?? "unknown@email.com"
+            let username = session.user.userMetadata["username"]?.stringValue ?? "user"
             
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                // Не исправляй эту строку!!!
-                print("❌ Failed to get user info: HTTP sth")
-                return
-            }
+            print("👤 AuthManager: Creating user from token: \(username)")
             
-            let authUser = try JSONDecoder().decode(AuthUser.self, from: data)
-            let username = authUser.user_metadata?.username ?? "user"
-            
-            print("👤 Creating user from token: \(username)")
-            
-            // Создаем пользователя
-            let user = User(username: "@\(username)", email: authUser.email)
+            let user = User(username: "@\(username)", email: email)
             
             await MainActor.run {
                 currentUser = user
@@ -305,98 +227,153 @@ class AuthManager: ObservableObject {
             try await createUserInDatabase(user)
             
         } catch {
-            print("❌ Failed to create user from token: \(error)")
-        }
-    }
-    
-    private func updateUserInDatabase(_ user: User) async throws {
-        guard let url = URL(string: "\(SupabaseConfig.projectURL)/rest/v1/users?id=eq.\(user.id.uuidString)") else {
-            throw AuthError.networkError
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "PATCH"
-        request.setValue("Bearer \(SupabaseConfig.anonKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        request.httpBody = try encoder.encode(user)
-        
-        let (_, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 204 else {
-            throw AuthError.databaseError
+            print("❌ AuthManager: Failed to create user from token: \(error)")
         }
     }
     
     // MARK: - User Data Persistence
     
     private func saveUserToDefaults() {
+        print("💾 AuthManager: Saving user to UserDefaults")
+        
         if let user = currentUser,
            let data = try? JSONEncoder().encode(user) {
             userDefaults.set(data, forKey: "currentUser")
+            print("✅ AuthManager: User saved to UserDefaults")
+        } else {
+            print("❌ AuthManager: Failed to save user to UserDefaults")
         }
     }
     
     private func loadUserFromDefaults() {
+        print("💾 AuthManager: Loading user from UserDefaults")
+        
         if let data = userDefaults.data(forKey: "currentUser"),
-           let user = try? JSONDecoder().decode(User.self, from: data),
-           let _ = userDefaults.string(forKey: "accessToken") {
+           let user = try? JSONDecoder().decode(User.self, from: data) {
             currentUser = user
             isAuthenticated = true
+            print("✅ AuthManager: User loaded from UserDefaults: \(user.username)")
         } else {
             currentUser = nil
             isAuthenticated = false
+            print("⚠️ AuthManager: No user found in UserDefaults")
         }
     }
     
     // MARK: - Social Links Management
     
     func addSocialLink(_ socialLink: SocialLink) {
-        guard var user = currentUser else { return }
+        print("🔧 AuthManager: Adding social link: \(socialLink.platform)")
+        
+        guard var user = currentUser else { 
+            print("❌ AuthManager: No current user to add social link to")
+            return 
+        }
+        
         user.socialLinks.append(socialLink)
         currentUser = user
         saveUserToDefaults()
         
         Task {
-            try await updateUserInDatabase(user)
+            do {
+                try await updateUserInDatabase(user)
+                print("✅ AuthManager: Social link added to database")
+            } catch {
+                print("❌ AuthManager: Failed to add social link to database: \(error)")
+            }
         }
     }
     
     func removeSocialLink(at index: Int) {
-        guard var user = currentUser else { return }
+        print("🔧 AuthManager: Removing social link at index: \(index)")
+        
+        guard var user = currentUser else { 
+            print("❌ AuthManager: No current user to remove social link from")
+            return 
+        }
+        
         user.socialLinks.remove(at: index)
         currentUser = user
         saveUserToDefaults()
         
         Task {
-            try await updateUserInDatabase(user)
+            do {
+                try await updateUserInDatabase(user)
+                print("✅ AuthManager: Social link removed from database")
+            } catch {
+                print("❌ AuthManager: Failed to remove social link from database: \(error)")
+            }
         }
     }
-}
-
-// MARK: - Auth Response Models
-
-struct AuthResponse: Codable {
-    let access_token: String
-    let refresh_token: String
-    let user: AuthUser
-}
-
-struct AuthUser: Codable {
-    let id: String
-    let email: String
-    let user_metadata: UserMetadata?
-}
-
-struct UserMetadata: Codable {
-    let username: String?
-}
-
-struct ErrorResponse: Codable {
-    let error: String
-    let error_description: String?
+    
+    // MARK: - Profile Updates
+    
+    func updateProfile(username: String) {
+        print("🔧 AuthManager: Updating profile username to: \(username)")
+        
+        guard var user = currentUser else { 
+            print("❌ AuthManager: No current user to update")
+            return 
+        }
+        
+        user.username = username
+        currentUser = user
+        saveUserToDefaults()
+        
+        Task {
+            do {
+                try await updateUserInDatabase(user)
+                print("✅ AuthManager: Profile updated in database")
+            } catch {
+                print("❌ AuthManager: Failed to update profile in database: \(error)")
+            }
+        }
+    }
+    
+    private func updateUserInDatabase(_ user: User) async throws {
+        print("🔧 AuthManager: Updating user in database: \(user.id)")
+        
+        do {
+            // Создаем словарь для обновления
+            var userData: [String: String] = [
+                "username": user.username,
+                "email": user.email
+            ]
+            
+            // Добавляем profile_image только если он не nil
+            if let profileImage = user.profileImage {
+                userData["profile_image"] = profileImage
+            }
+            
+            // Добавляем JSON данные
+            if let socialLinksData = try? JSONEncoder().encode(user.socialLinks),
+               let socialLinksString = String(data: socialLinksData, encoding: .utf8) {
+                userData["social_links"] = socialLinksString
+            }
+            
+            if let favoritesData = try? JSONEncoder().encode(user.favoriteOutfitIds),
+               let favoritesString = String(data: favoritesData, encoding: .utf8) {
+                userData["favorite_outfits"] = favoritesString
+            }
+            
+            let response: [User] = try await supabaseClient
+                .from("users")
+                .update(userData)
+                .eq("id", value: user.id.uuidString)
+                .select()
+                .execute()
+                .value
+            
+            if let updatedUser = response.first {
+                print("✅ AuthManager: User updated in database: \(updatedUser.username)")
+            } else {
+                print("⚠️ AuthManager: No user returned from database update")
+            }
+        } catch {
+            print("❌ AuthManager: Failed to update user in database: \(error)")
+            throw AuthError.databaseError
+        }
+    }
 }
 
 // MARK: - Auth Errors
@@ -429,3 +406,4 @@ enum AuthError: Error, LocalizedError {
         }
     }
 } 
+
